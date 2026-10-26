@@ -50,4 +50,4 @@ GNU General Public License v3.0（GPL-3.0）で公開しています。GPL-3.0 �
 詳細 [LICENSE](LICENSE)
 
 - 「Hemitrygon」の名前とロゴは、GPL-3.0 の対象外です。改変したものを配布するときは、Hemitrygon の名前とロゴを外してください。
-- 使用している第三者のもの：Tailwind CSS（MIT License・ビルド済みの CSS を埋め込み）、kuromoji.js（Apache License 2.0・漢字かな変換を使ったときだけ CDN から読み込み）、Inter / Noto Sans JP / JetBrains Mono / Yusei Magic（SIL Open Font License 1.1・Google Fonts から読み込み）。標準の練習文の『こころ』冒頭といろは歌はパブリックドメインです。
+- 使用している第三者のもの（ライセンスの全文は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）：Tailwind CSS（MIT License・ビルド済みの CSS を埋め込み）、kuromoji.js（Apache License 2.0・漢字かな変換を使ったときだけ CDN から読み込み）、Inter / Noto Sans JP / JetBrains Mono / Yusei Magic（SIL Open Font License 1.1・Google Fonts から読み込み）。標準の練習文の『こころ』冒頭といろは歌はパブリックドメインです。
