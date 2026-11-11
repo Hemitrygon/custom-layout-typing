@@ -1,0 +1,174 @@
+/* 「記録」の画面：通常の練習（数字・推移のグラフ・得意不得意・配列別・一覧）と、シャトルラン（トロフィー・記録）。 */
+
+.hist-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 16px; }
+.hist-filters label { display: grid; gap: 4px; font-size: 12px; letter-spacing: 0.1em; color: var(--ink-3); min-width: 170px; }
+.hist-filters .field { height: 34px; font-size: 14px; letter-spacing: 0; }
+
+/* ---------- まとめの数字 ---------- */
+
+.hist-stats { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.hist-stat { display: grid; align-content: start; gap: 2px; padding: 14px 16px 12px; border-radius: var(--r-m); background: rgb(var(--fg) / 0.035); border: 1px solid var(--line); min-width: 0; }
+.hist-stat > i { font-style: normal; font-size: 12px; letter-spacing: 0.14em; color: var(--ink-3); }
+.hist-stat-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.hist-stat-main b { font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
+.hist-stat-main em { font-style: normal; font-size: 13.500px; color: var(--ink-3); }
+.hist-stat small { font-size: 12.500px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-stat.is-hero { background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.13), rgb(var(--fg) / 0.03) 60%); border-color: rgb(var(--accent-rgb) / 0.28); }
+.hist-stat.is-hero .hist-stat-main b { font-size: 38px; }
+.rank-pill {
+  --rank: var(--accent); display: inline-grid; place-items: center; min-width: 30px; height: 22px; padding: 0 7px; border-radius: 7px; align-self: center;
+  font-family: var(--font-num); font-size: 13.500px; font-weight: 800; letter-spacing: 0.02em; color: var(--rank);
+  background: color-mix(in srgb, var(--rank) 16%, transparent); border: 1px solid color-mix(in srgb, var(--rank) 45%, transparent);
+}
+.hist-stat.is-hero .rank-pill { height: 28px; min-width: 38px; font-size: 15px; border-radius: 9px; }
+
+/* ---------- 枠 ---------- */
+
+.hist-card { padding: 16px 18px 16px; margin-bottom: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.hist-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.hist-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.hist-none { padding: 22px 10px; text-align: center; font-size: 14px; color: var(--ink-3); line-height: 1.8; }
+.hist-none.is-left { text-align: left; padding: 6px 0; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.check input { appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 5px; border: 1.500px solid var(--line-2); background: rgb(var(--bk) / calc(0.3 * var(--bk-k))); display: grid; place-items: center; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.check input::after { content: ""; width: 8px; height: 4px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: translateY(-1px) rotate(-45deg) scale(0); transition: transform 0.2s var(--ease); }
+.check input:checked { background: var(--accent); border-color: var(--accent); }
+.check input:checked::after { transform: translateY(-1px) rotate(-45deg) scale(1); }
+.check:hover input { border-color: rgb(var(--fg) / 0.35); }
+
+/* ---------- 推移のグラフ ---------- */
+
+.hist-chart { position: relative; min-width: 0; }
+.hist-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13.500px; color: var(--ink-2); margin-bottom: 4px; }
+.hist-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.hist-legend i { width: 14px; height: 3px; border-radius: 3px; background: var(--ink-3); }
+.hist-legend i.is-dash { background: repeating-linear-gradient(90deg, var(--accent) 0 5px, transparent 5px 8px); }
+.hist-plot { position: relative; }
+.hist-plot svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.hist-plot .grid { stroke: rgb(var(--fg) / 0.07); stroke-width: 1; shape-rendering: crispEdges; }
+.hist-plot .day { stroke: rgb(var(--fg) / 0.1); stroke-width: 1; stroke-dasharray: 2 4; }
+.hist-plot text { font-family: var(--font-num); font-size: 10.500px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.hist-plot .ytick { text-anchor: end; }
+.hist-plot .xtick { text-anchor: middle; fill: var(--ink-4); }
+.hist-plot .xdate { text-anchor: middle; fill: var(--ink-3); }
+.hist-plot .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.hist-plot .pt { stroke: var(--solid); stroke-width: 2; }
+.hist-plot .avg { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; opacity: 0.9; }
+.hist-plot .best { stroke: var(--ink-3); stroke-width: 1.500; stroke-dasharray: 1 4; stroke-linecap: round; }
+.hist-plot .best-label { font-family: var(--font-num); font-size: 12px; font-weight: 700; fill: var(--ink-2); }
+.hist-legend i.is-best { background: repeating-linear-gradient(90deg, var(--ink-3) 0 2px, transparent 2px 5px); }
+.hist-plot .cross { stroke: rgb(var(--fg) / 0.3); stroke-width: 1; pointer-events: none; }
+.hist-tip {
+  position: absolute; z-index: 2; transform: translate(-50%, -100%); display: grid; gap: 1px; min-width: 130px; max-width: 260px; padding: 8px 11px; border-radius: 10px; pointer-events: none;
+  background: var(--pop-bg); border: 1px solid var(--line-2); box-shadow: 0 14px 34px -10px rgb(var(--bk) / calc(0.85 * var(--bk-k))); font-size: 12.500px; color: var(--ink-2); white-space: nowrap;
+}
+.hist-tip b { font-size: 16px; color: var(--ink); line-height: 1.3; }
+.hist-tip small { font-size: 12px; color: var(--ink-3); }
+.hist-tip span { display: inline-flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; }
+.hist-count { position: absolute; right: 2px; top: 0; font-size: 12px; color: var(--ink-4); }
+.hist-chart-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+.hist-empty { display: grid; justify-items: center; gap: 4px; padding: 54px 16px; text-align: center; color: var(--ink-3); font-size: 14px; }
+.hist-empty b { color: var(--ink-2); font-size: 14px; font-weight: 700; }
+
+/* ---------- 得意・不得意 / 配列別 ---------- */
+
+.hist-list { display: grid; gap: 12px; }
+.hist-sub { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13.500px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.04em; }
+.hist-row { display: grid; gap: 5px; min-width: 0; }
+.hist-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; font-size: 14px; }
+.hist-row-head b { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-row-head strong { color: var(--ink); font-weight: 600; }
+.hist-row-head > span { font-size: 13.500px; white-space: nowrap; }
+.hist-row small { font-size: 12px; color: var(--ink-3); }
+.tag { font-size: 12.500px; color: var(--ink-3); white-space: nowrap; }
+.tag.is-up { color: var(--ok-text); }
+.tag.is-down { color: var(--danger-text); }
+/* まん中（±0）から左右にふれる目盛り */
+.diverge { position: relative; height: 6px; border-radius: 6px; background: linear-gradient(90deg, rgb(var(--danger-rgb) / 0.3), rgb(var(--fg) / 0.07) 42%, rgb(var(--fg) / 0.07) 58%, rgb(var(--ok-rgb) / 0.3)); }
+.diverge .mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--ink-4); }
+.diverge .knob { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--ink); border: 2px solid var(--solid); box-shadow: 0 2px 6px rgb(var(--bk) / calc(0.6 * var(--bk-k))); }
+/* 濃い棒＝平均、薄い棒＝最高 */
+.bar2 { --c: var(--ink-3); position: relative; height: 10px; border-radius: 4px; background: rgb(var(--fg) / 0.05); overflow: hidden; }
+.bar2 i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--c); }
+.bar2 .max { opacity: 0.3; }
+
+/* ---------- 完走の一覧 ---------- */
+
+.hist-records { display: grid; }
+.rec { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto 34px; align-items: center; gap: 14px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.rec:last-child { border-bottom: 0; }
+.rec:hover { background: rgb(var(--fg) / 0.025); }
+.rec-score { display: flex; align-items: center; gap: 9px; }
+.rec-score b { font-size: 17px; font-weight: 700; }
+.rec-what { display: grid; gap: 2px; min-width: 0; }
+.rec-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.500px; min-width: 0; }
+.rec-tags .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.rec-what small { font-size: 12px; color: var(--ink-3); }
+.rec-tags .faint { color: var(--ink-3); }
+.rec-nums { display: grid; grid-template-columns: repeat(4, minmax(56px, auto)); gap: 4px 16px; text-align: right; }
+.rec-nums span { display: grid; line-height: 1.3; }
+.rec-nums i { font-style: normal; font-family: var(--font-ui); font-size: 10.500px; color: var(--ink-3); letter-spacing: 0.06em; }
+.rec-nums b { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.rec .icon-btn { width: 34px; padding: 0; justify-content: center; color: var(--ink-4); }
+.rec .icon-btn:hover { color: var(--danger); background: var(--danger-soft); }
+.table-wrap { overflow: auto; max-height: 420px; border-radius: 10px; }
+
+/* ---------- シャトルラン：トロフィーの棚と記録 ---------- */
+
+.tr-cabinet { background: linear-gradient(180deg, rgb(var(--teal-rgb) / 0.05), rgb(var(--fg) / 0.03) 40%); border-color: rgb(var(--teal-rgb) / 0.16); }
+.tr-got { font-size: 16px; color: var(--ink); }
+.tr-progress { height: 5px; border-radius: 5px; background: rgb(var(--fg) / 0.07); overflow: hidden; min-width: 80px; }
+.tr-progress i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, var(--teal), var(--gold)); transition: width 0.9s var(--ease); }
+.tr-tiers { display: flex; flex-wrap: wrap; gap: 6px; }
+.tr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tr-card { --c: var(--ink-3); position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; padding: 14px 10px 10px; border-radius: 12px; text-align: center; background: rgb(var(--bk) / calc(0.22 * var(--bk-k))); border: 1px solid var(--line); overflow: hidden; transition: transform 0.25s var(--ease), border-color 0.25s; }
+.tr-card .trophy-svg { width: 46px; height: 46px; margin-bottom: 4px; }
+.tr-card b { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.4; }
+.tr-tier { font-size: 10.500px; letter-spacing: 0.14em; color: var(--ink-3); }
+.tr-desc { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+.tr-date { font-size: 11.500px; color: var(--ink-4); margin-top: 3px; }
+.tr-card.is-earned { border-color: color-mix(in srgb, var(--c) 40%, transparent); background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--c) 16%, transparent), rgb(var(--bk) / calc(0.22 * var(--bk-k))) 70%); }
+.tr-card.is-earned .trophy-svg { filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--c) 55%, transparent)); }
+.tr-card.is-earned:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--c) 70%, transparent); }
+/* プラチナ以上：カードに光が流れ、縁が光る。ゴッドは縁が虹色 */
+.tr-card.is-earned:is([data-tier="platinum"], [data-tier="diamond"], [data-tier="god"]) {
+  border-color: color-mix(in srgb, var(--c) 75%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent), 0 10px 30px -10px color-mix(in srgb, var(--c) 70%, transparent);
+  background: radial-gradient(130% 90% at 50% 0%, color-mix(in srgb, var(--c) 30%, transparent), rgb(var(--bk) / calc(0.22 * var(--bk-k))) 75%);
+}
+.tr-card.is-earned:is([data-tier="platinum"], [data-tier="diamond"], [data-tier="god"]) .trophy-svg { width: 54px; height: 54px; margin-bottom: 0; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 80%, transparent)); }
+.tr-card.is-earned:is([data-tier="platinum"], [data-tier="diamond"], [data-tier="god"])::after {
+  content: ""; position: absolute; inset: -40% -60%; pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.22) 50%, transparent 58%);
+  transform: translateX(-60%); animation: trSheen 4.5s ease-in-out infinite;
+}
+.tr-card.is-earned[data-tier="diamond"]::after { animation-duration: 3.6s; }
+.tr-card.is-earned[data-tier="god"]::after { animation-duration: 3s; background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.3) 50%, transparent 60%); }
+@keyframes trSheen { 0%, 35% { transform: translateX(-60%); } 75%, 100% { transform: translateX(60%); } }
+.tr-card.is-earned[data-tier="god"] {
+  border: 1px solid transparent;
+  background:
+    radial-gradient(130% 90% at 50% 0%, rgb(255 106 213 / 0.24), rgb(62 232 255 / 0.08) 55%, transparent 85%) padding-box,
+    linear-gradient(var(--solid), var(--solid)) padding-box,
+    conic-gradient(from 0deg, #ffd76a, #ff6ad5, #8b5cf6, #3ee8ff, #6effa6, #ffd76a) border-box;
+}
+.tr-card.is-earned[data-tier="god"] b { background: linear-gradient(90deg, #ffd76a, #ff6ad5, #3ee8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tr-card.is-locked .trophy-svg { filter: grayscale(1) brightness(0.5); opacity: 0.6; }
+.tr-card.is-locked b, .tr-card.is-locked .tr-desc { color: var(--ink-4); }
+.sh-best { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; align-items: baseline; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.sh-best:last-child { border-bottom: 0; padding-bottom: 0; }
+.sh-best b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-best strong { font-size: 20px; color: var(--teal-text); font-weight: 700; }
+.sh-best small { grid-column: 1 / -1; font-size: 12px; color: var(--ink-4); }
+.sh-hist-chart { display: block; width: 100%; height: auto; }
+.sh-hist-chart line { stroke: var(--line-2); stroke-width: 1; }
+.sh-hist-chart rect { fill: var(--teal); opacity: 0.85; }
+.sh-hist-chart g:hover rect { opacity: 1; }
+.sh-hist-chart text { fill: var(--ink-3); font-size: 10px; text-anchor: middle; font-family: var(--font-num); }
+
+@media (max-width: 900px) {
+  .hist-stats { grid-template-columns: 1fr 1fr; }
+  .hist-two { grid-template-columns: 1fr; }
+  .rec { grid-template-columns: 100px minmax(0, 1fr) 34px; }
+  .rec-nums { grid-column: 1 / -1; grid-row: 2; text-align: left; justify-content: start; }
+}

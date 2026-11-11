@@ -1,0 +1,20 @@
+[package]
+name = "typing_core"
+version = "0.1.0"
+edition = "2024"
+description = "カスタム配列タイピング（v6）の中身：変換・判定・スコア。WebAssembly にしてブラウザで動かす予定"
+license = "GPL-3.0-or-later"
+
+[lib]
+# cdylib = WASM 用、rlib = cargo test 用
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# JS とのつなぎ（#[wasm_bindgen] を付けた関数が JS から呼べる）
+wasm-bindgen = "0.2.130"
+# 保存データ（JSON）を読む
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+# 正解データ（tests/golden/*.json）を読むため。float_roundtrip：JS が書いた小数を 1 ビットも変えずに読む
+serde_json = { version = "1", features = ["float_roundtrip"] }

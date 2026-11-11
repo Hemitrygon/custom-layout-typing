@@ -1,0 +1,17 @@
+# ゴミ箱・旧版のバックアップ
+trash/
+old_versions/
+# npm の部品（ルートは Playwright だけ・web/ は three と vite）とビルド出力
+node_modules/
+web/node_modules/
+web/dist/
+# Rust のビルド出力・WASM の出力
+core/target/
+core/pkg/
+# 道具（Rust のツールチェーンなど。env.sh がここを使う）
+toolchain/
+# three からコピーする Draco の展開器（web/scripts/copy_draco.mjs）
+web/public/draco/
+publish/demo.json
+# このパソコンだけの設定（env.sh が読み込む）
+env.local.sh

@@ -1,0 +1,168 @@
+/* シャトルラン：暗い画面に青緑の光。残り時間が減ると、橙 → 赤へ。 */
+
+#shuttle { position: absolute; inset: 0; z-index: 30; display: grid; grid-template-rows: auto auto minmax(0, 40fr) minmax(0, 46fr); --sh: var(--teal); color: #e6f4f2; animation: fadeIn 0.5s both; }
+#shuttle[data-band="warn"] { --sh: #ffb23e; }
+#shuttle[data-band="crit"] { --sh: var(--danger); }
+#shuttle[data-freeze="inv"] { --sh: var(--gold); }
+body[data-shuttle="1"] #top, body[data-shuttle="1"] #views { visibility: hidden; }
+.sh-veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s; background: radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(255, 40, 60, 0.26) 100%); }
+
+.sh-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 16px 0 6px; }
+.sh-name { display: flex; align-items: baseline; gap: 12px; }
+.sh-name b { font-size: 17px; letter-spacing: 0.08em; }
+.sh-name span { font-size: 13.500px; color: rgba(230, 244, 242, 0.55); }
+
+.sh-hud { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 30px; width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 8px 0; }
+.sh-level { display: grid; justify-items: start; line-height: 1.1; }
+.sh-level i, .sh-time-head i { font-style: normal; font-size: 12px; letter-spacing: 0.16em; color: rgba(230, 244, 242, 0.55); }
+.sh-level b { font-size: 54px; font-weight: 700; line-height: 1; margin: 2px 0; }
+.sh-level span { font-size: 13.500px; font-weight: 700; color: var(--sh); transition: color 0.4s; }
+.sh-time-head { display: flex; align-items: baseline; gap: 10px; }
+.sh-time-head b { margin-left: auto; font-size: 22px; font-weight: 600; color: var(--sh); transition: color 0.4s; }
+.sh-time-head small { font-size: 12px; margin-left: 3px; opacity: 0.7; font-weight: 400; }
+.sh-time-state { font-size: 12px; font-weight: 700; color: #241a00; background: var(--gold); padding: 0 8px; border-radius: 20px; }
+.sh-bar { height: 10px; margin: 6px 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+.sh-bar > div { height: 100%; width: 100%; border-radius: 10px; background: var(--sh); box-shadow: 0 0 18px var(--sh); transition: background 0.4s, box-shadow 0.4s; }
+#shuttle[data-freeze="inv"] .sh-bar > div { background: repeating-linear-gradient(-45deg, var(--gold) 0 10px, #ffe9a3 10px 20px); }
+#shuttle[data-band="crit"] .sh-bar > div { animation: barPulse 0.5s ease-in-out infinite; }
+@keyframes barPulse { 50% { opacity: 0.55; } }
+.sh-time-foot { display: flex; justify-content: space-between; font-size: 13.500px; color: rgba(230, 244, 242, 0.6); }
+.sh-time-foot b { color: #e6f4f2; font-weight: 600; }
+.sh-side { display: flex; align-items: center; gap: 16px; }
+.sh-combo { position: relative; width: 50px; height: 50px; display: grid; place-items: center; }
+.sh-combo svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.sh-combo circle { fill: none; stroke-width: 4; }
+.sh-combo .track { stroke: rgba(255, 255, 255, 0.1); }
+.sh-combo .fill { stroke: var(--teal); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.15s; }
+.sh-combo b { font-size: 16px; font-weight: 700; }
+.sh-shields { display: grid; gap: 5px; font-size: 13.500px; color: rgba(230, 244, 242, 0.5); }
+.sh-shields.is-on { color: var(--gold); }
+.sh-shield-row { display: flex; align-items: center; gap: 4px; }
+.sh-shield-ico { opacity: 0.3; }
+.sh-shield-ico.is-on { opacity: 1; color: var(--gold); filter: drop-shadow(0 0 6px rgba(255, 204, 77, 0.8)); }
+.sh-shield-ico.is-on .ico { fill: rgba(255, 204, 77, 0.35); }
+#shShieldText { margin-left: 4px; }
+.sh-streak { display: flex; gap: 5px; }
+.sh-streak i { width: 8px; height: 8px; border-radius: 50%; border: 1.500px solid rgba(230, 244, 242, 0.35); }
+.sh-streak i.is-on { background: var(--teal); border-color: var(--teal); box-shadow: 0 0 8px var(--teal); }
+
+/* ---------- 文 ---------- */
+
+.sh-stage { position: relative; display: grid; place-items: center; align-content: center; gap: 6px; min-height: 0; padding: 0 24px; --amp: 0; }
+.sh-prompt { position: relative; display: grid; justify-items: center; gap: 6px; padding: 16px 34px; max-width: min(1040px, 100%); text-align: center; border-radius: 18px; }
+.sh-prompt.is-in { animation: promptIn 0.32s var(--ease) both; }
+.sh-prompt.is-miss { animation: promptMiss 0.28s ease-out; }
+#shuttle[data-band="crit"] .sh-prompt { animation: shQuake 0.12s linear infinite; }
+@keyframes shQuake { 0% { transform: translate(calc(var(--amp) * 1px), 0); } 50% { transform: translate(calc(var(--amp) * -1px), calc(var(--amp) * 0.5px)); } 100% { transform: translate(0, calc(var(--amp) * -0.5px)); } }
+.sh-stage.is-inv .sh-prompt { box-shadow: 0 0 0 1.500px rgba(255, 204, 77, 0.7), 0 0 40px -6px rgba(255, 204, 77, 0.5); background: rgba(255, 204, 77, 0.05); animation: none; }
+.sh-kana { font-size: clamp(13px, 1.400vw, 17px); letter-spacing: 0.14em; color: rgba(230, 244, 242, 0.55); min-height: 1.5em; }
+.sh-kanji { font-size: clamp(24px, 3.200vw, 44px); font-weight: 700; letter-spacing: 0.05em; line-height: 1.4; overflow-wrap: anywhere; text-shadow: 0 4px 30px rgba(0, 0, 0, 0.7); }
+.sh-romaji { font-size: clamp(16px, 1.800vw, 23px); letter-spacing: 0.1em; color: rgba(230, 244, 242, 0.8); overflow-wrap: anywhere; }
+.sh-ch { display: inline-block; white-space: pre; }
+#shuttle .t-done { color: var(--teal); }
+#shuttle .sh-kana .t-done { color: rgba(47, 224, 200, 0.7); }
+#shuttle .t-now { color: #fff; }
+#shuttle .t-now::after { background: var(--sh); box-shadow: 0 0 12px var(--sh); }
+.sh-prompt.is-miss .t-now { color: var(--danger); }
+.sh-cracks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 90, 100, 0.9)); }
+/* 線の太さは画面の px（vector-effect）。最初は見えず、割合を超えた線から、ぱっと走るように現れる */
+.sh-cracks path { fill: none; stroke: rgba(255, 255, 255, 0.8); stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: 0; transition: opacity 0.18s ease-out; }
+.sh-cracks path.is-on { opacity: 1; }
+.sh-stage.is-shatter .sh-ch { animation: shatter 1s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+.sh-stage.is-shatter .sh-cracks { opacity: 0; }
+@keyframes shatter { to { transform: translate(var(--fx, 0), var(--fy, 200px)) rotate(var(--fr, 90deg)); opacity: 0; } }
+.sh-next { display: flex; align-items: center; gap: 12px; min-height: 26px; font-size: clamp(14px, 1.600vw, 20px); color: rgba(230, 244, 242, 0.32); }
+.sh-part { font-size: 13.500px; padding: 1px 9px; border-radius: 20px; border: 1px solid rgba(230, 244, 242, 0.25); color: rgba(230, 244, 242, 0.7); }
+.sh-count { position: absolute; font-size: clamp(90px, 14vw, 170px); font-weight: 700; color: #fff; text-shadow: 0 0 60px rgba(47, 224, 200, 0.7); }
+
+.sh-freeze { position: absolute; top: 0; left: 50%; transform: translate(-50%, -30%); display: flex; align-items: center; gap: 8px; padding: 5px 14px; border-radius: 999px; background: var(--gold); color: #241a00; font-size: 14px; font-weight: 700; overflow: hidden; white-space: nowrap; z-index: 2; }
+.sh-freeze small { font-weight: 500; font-size: 12px; opacity: 0.8; }
+.sh-freeze i { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #7a5a00; transform-origin: left; }
+.sh-banner { position: absolute; top: 4%; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; padding: 8px 26px; border-radius: 14px; background: rgba(8, 16, 20, 0.85); border: 1px solid var(--sh); white-space: nowrap; z-index: 3; }
+.sh-banner.is-show { animation: bannerIn 2.300s var(--ease) both; }
+@keyframes bannerIn { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.94); } 12%, 82% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+.sh-banner b { font-size: 18px; letter-spacing: 0.1em; color: var(--sh); }
+.sh-banner span { font-size: 13.500px; color: rgba(230, 244, 242, 0.7); }
+.sh-popups { position: absolute; left: 50%; bottom: 6%; width: 0; height: 0; }
+.sh-popup { position: absolute; left: var(--x, 0); bottom: 0; transform: translateX(-50%); white-space: nowrap; font-family: var(--font-num); font-size: 15px; font-weight: 700; padding: 2px 10px; border-radius: 20px; background: rgba(6, 12, 15, 0.7); animation: popupUp 1.250s ease-out both; }
+@keyframes popupUp { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.85); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -64px); } }
+.sh-popup.is-bonus, .sh-popup.is-clear { color: var(--teal); }
+.sh-popup.is-perfect, .sh-popup.is-shield, .sh-popup.is-guard { color: var(--gold); }
+.sh-popup.is-miss { color: var(--danger); }
+
+.sh-slot { min-height: 0; width: min(70vw, 980px); margin: 0 auto 22px; pointer-events: none; }
+
+/* ---------- 説明・一時停止・結果の枠 ---------- */
+
+.sh-panel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, calc(100% - 32px)); max-height: calc(100% - 40px); overflow: auto; padding: 26px 30px; z-index: 5;
+  display: grid; gap: 14px; justify-items: center; text-align: center; background: rgba(8, 15, 19, 0.86); border-color: rgba(47, 224, 200, 0.2); animation: modalIn 0.45s var(--ease) both;
+}
+#shuttle[data-phase="intro"] .sh-hud, #shuttle[data-phase="intro"] .sh-stage, #shuttle[data-phase="over"] .sh-hud { opacity: 0.25; }
+#shuttle[data-phase="over"] .sh-panel { top: 58px; transform: translateX(-50%); max-height: calc(100% - 70px); }
+#shuttle[data-phase="over"] .sh-stage { opacity: 0; transition: opacity 0.6s 0.9s; }
+.sh-lead { font-size: 14px; line-height: 1.9; color: rgba(230, 244, 242, 0.85); max-width: 600px; }
+.sh-warn { color: #ffb3ba; background: var(--danger-soft); border: 1px solid rgba(255, 77, 94, 0.3); border-radius: 10px; padding: 8px 14px; font-size: 14px; }
+.sh-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; margin: 0; text-align: left; width: 100%; }
+.sh-rules div { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: baseline; }
+.sh-rules dt { font-weight: 700; color: var(--teal); font-size: 14px; }
+.sh-rules dt.is-minus { color: var(--danger); }
+.sh-rules dt.is-gold, .is-gold { color: var(--gold); }
+.sh-rules dd { margin: 0; font-size: 14px; color: rgba(230, 244, 242, 0.7); line-height: 1.6; }
+.sh-meta { font-size: 14px; color: rgba(230, 244, 242, 0.6); }
+.sh-meta b { color: #e6f4f2; }
+.sh-actions { justify-content: center; margin-top: 4px; }
+.sh-go { background: var(--teal); border-color: transparent; color: #03211d; font-weight: 700; }
+.sh-go:hover { background: #5cf0dc; border-color: transparent; }
+/* .sh-go kbd は base.css の「色の付いたボタンの中のキーの絵」 */
+.sh-over-head { display: flex; align-items: center; gap: 26px; text-align: left; }
+.sh-over-level { font-size: 96px; font-weight: 800; line-height: 1; background: linear-gradient(170deg, #fff 10%, var(--teal) 70%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 8px 30px rgba(47, 224, 200, 0.45)); animation: rankIn 0.9s var(--ease) both; }
+.sh-over-sub { display: grid; gap: 6px; justify-items: start; }
+.sh-over-title { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+.sh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.sh-stats div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); text-align: left; }
+.sh-stats span { font-size: 12px; color: rgba(230, 244, 242, 0.55); letter-spacing: 0.06em; }
+.sh-stats b { font-size: 17px; font-weight: 600; }
+.sh-chart-box { width: 100%; }
+.sh-chart { width: 100%; height: auto; max-height: 130px; display: block; }
+.sh-chart .lim { fill: rgba(255, 255, 255, 0.09); }
+.sh-chart .perfect { fill: var(--teal); }
+.sh-chart .used { fill: #5aa7a0; }
+.sh-chart .fail { fill: var(--danger); }
+.sh-chart text { fill: rgba(230, 244, 242, 0.5); font-size: 9px; text-anchor: middle; font-family: var(--font-num); }
+.sh-chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; font-size: 12px; color: rgba(230, 244, 242, 0.6); margin-top: 4px; }
+.sh-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sh-chart-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.sh-chart-legend .lim { background: rgba(255, 255, 255, 0.16); }
+.sh-chart-legend .perfect { background: var(--teal); }
+.sh-chart-legend .used { background: #5aa7a0; }
+.sh-chart-legend .fail { background: var(--danger); }
+.sh-new-trophies { display: grid; gap: 8px; width: 100%; padding: 14px; border-radius: 14px; background: rgba(255, 204, 77, 0.07); border: 1px solid rgba(255, 204, 77, 0.3); }
+.sh-new-title { font-weight: 700; color: var(--gold); letter-spacing: 0.1em; }
+.sh-new-trophy { display: flex; align-items: center; gap: 12px; text-align: left; animation: trophyIn 0.7s var(--ease) both; animation-delay: var(--delay, 0s); }
+@keyframes trophyIn { from { opacity: 0; transform: translateY(10px) scale(0.9); } }
+.sh-new-trophy .trophy-svg { width: 44px; height: 44px; flex: none; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)); }
+.sh-new-trophy b { display: block; font-size: 14px; }
+.sh-new-trophy:is([data-tier="platinum"], [data-tier="diamond"], [data-tier="god"]) .trophy-svg { width: 52px; height: 52px; filter: drop-shadow(0 0 12px rgba(190, 240, 255, 0.75)); }
+.sh-new-trophy[data-tier="god"] .trophy-svg { filter: drop-shadow(0 0 14px rgba(255, 106, 213, 0.8)); }
+.sh-new-trophy[data-tier="god"] b { background: linear-gradient(90deg, #ffd76a, #ff6ad5, #3ee8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sh-new-trophy span { font-size: 13.500px; color: rgba(230, 244, 242, 0.65); }
+.sh-level-table tr.is-stage td { border-top: 1px solid var(--line-2); }
+.sh-level-table tr.is-reached td { background: var(--accent-soft); }
+.sh-level-table tr.is-best td { background: rgba(47, 224, 200, 0.08); }
+
+@media (max-width: 760px) {
+  .sh-hud { grid-template-columns: auto 1fr; gap: 14px; }
+  .sh-side { grid-column: 1 / -1; justify-content: center; }
+  .sh-rules { grid-template-columns: 1fr; }
+  .sh-stats { grid-template-columns: 1fr 1fr; }
+  .sh-level b { font-size: 40px; }
+  .sh-slot { width: 96vw; }
+}
+
+/* 到達レベル：立体の文字が回る（scene/score3d.js）。描けないときは、ふつうの文字 */
+.sh-over-lv { position: relative; }
+.sh-over-level3d { display: none; width: 190px; height: 120px; }
+.sh-over-level3d canvas { display: block; width: 100% !important; height: 100% !important; -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); }
+.sh-over-lv.is-3d .sh-over-level3d { display: block; }
+.sh-over-lv.is-3d .sh-over-level { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

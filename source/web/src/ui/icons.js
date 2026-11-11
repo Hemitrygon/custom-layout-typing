@@ -1,0 +1,40 @@
+// アイコン（線の絵）。すべてこのファイルの中の SVG で、外から読み込まない。
+import { raw } from './dom.js';
+
+const svg = (d, extra = '') => raw('<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + extra + '>' + d + '</svg>');
+
+export const icon = {
+  sliders: svg('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
+  data: svg('<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>'),
+  help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9"/><path d="M12 17h.01"/>'),
+  close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+  chevron: svg('<path d="M6 9l6 6 6-6"/>'),
+  right: svg('<path d="M9 6l6 6-6 6"/>'),
+  left: svg('<path d="M15 6l-6 6 6 6"/>'),
+  play: svg('<path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="none"/>'),
+  pause: svg('<path d="M9 6v12M15 6v12"/>'),
+  retry: svg('<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 5v4h4"/>'),
+  shuffle: svg('<path d="M4 7h3c5 0 5 10 10 10h3"/><path d="M4 17h3c1.6 0 2.7-1 3.6-2.3M13.4 9.3C14.3 8 15.400 7 17 7h3"/><path d="M18 4.500l2.500 2.500-2.500 2.500M18 14.500l2.500 2.500-2.500 2.500"/>'),
+  bolt: svg('<path d="M13 3L5 13.500h6L10 21l8-10.500h-6z"/>'),
+  check: svg('<path d="M5 12.500l4.500 4.500L19 7.500"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  trash: svg('<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>'),
+  undo: svg('<path d="M8 8H15a4.500 4.500 0 0 1 0 9H9"/><path d="M11 5L8 8l3 3"/>'),
+  save: svg('<path d="M6 4h10l3 3v13H5V4z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>'),
+  upload: svg('<path d="M12 16V5M8 9l4-4 4 4"/><path d="M5 19h14"/>'),
+  download: svg('<path d="M12 5v11M8 12l4 4 4-4"/><path d="M5 19h14"/>'),
+  grip: svg('<circle cx="9" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="17" r="1" fill="currentColor"/><circle cx="15" cy="17" r="1" fill="currentColor"/>'),
+  lock: svg('<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>'),
+  shield: svg('<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>'),
+  trophy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6M10 17h4"/>'),
+  book: svg('<path d="M5 5a2 2 0 0 1 2-2h12v16H7a2 2 0 0 0-2 2z"/><path d="M5 21V5M9 7h6"/>'),
+  keyboard: svg('<rect x="3" y="6" width="18" height="12" rx="2.500"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>'),
+  sound: svg('<path d="M5 10v4h3l4 3.500v-11L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.500 6.500a7.500 7.500 0 0 1 0 11"/>'),
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+  warn: svg('<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>'),
+  edit: svg('<path d="M5 19l1-4L16.500 4.500l3 3L9 18z"/>'),
+  copy: svg('<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>'),
+  list: svg('<path d="M8 7h11M8 12h11M8 17h11M4.500 7h.01M4.500 12h.01M4.500 17h.01"/>'),
+  chart: svg('<path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-8"/>'),
+  swap: svg('<path d="M7 7h12l-3-3M17 17H5l3 3"/>'),
+};

@@ -1,0 +1,141 @@
+/* 上の帯から開くダイアログ：データ・ヘルプ（操作ガイド）・チュートリアル・キーボード調整・追加のキー。 */
+
+/* ---------- 上に出す帯（おすすめ）・Esc が文字のキーのとき ---------- */
+
+#banner[data-tone="hint"] { background: var(--hint-bg); border-bottom-color: rgb(var(--gold-rgb) / 0.5); color: var(--gold-text); }
+#banner .ico { flex: none; }
+/* キーボード調整で Esc が文字の位置にあるとき：Esc の案内を消し、最小構成でも「一時停止」ボタンを残す */
+body[data-esc="typed"] .esc-hint { display: none; }
+body[data-esc="typed"][data-focus="1"] .p-hud { opacity: 1; pointer-events: auto; }
+body[data-esc="typed"][data-focus="1"] .p-hud > :not(.btn) { opacity: 0; }
+
+/* ---------- データ ---------- */
+
+.data-status { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: var(--r-m); font-size: 14px; line-height: 1.65; }
+.data-status .ico { margin-top: 2px; }
+.data-status.is-ok { color: var(--ok-text); background: rgb(var(--ok-rgb) / 0.09); border: 1px solid rgb(var(--ok-rgb) / 0.28); }
+.data-status.is-bad { color: var(--danger-text); background: var(--danger-soft); border: 1px solid rgb(var(--danger-rgb) / 0.4); }
+.data-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.data-counts > div { display: grid; gap: 2px; padding: 10px 14px; border-radius: var(--r-m); background: rgb(var(--fg) / 0.035); border: 1px solid var(--line); }
+.data-counts i { font-style: normal; font-size: 12.500px; color: var(--ink-3); letter-spacing: 0.06em; }
+.data-counts b { font-size: 17px; font-weight: 700; color: var(--ink); }
+.data-overwrite { margin-top: 10px; display: grid; gap: 6px; }
+.data-check { margin-top: 8px; white-space: normal; }
+.data-storage { display: grid; gap: 9px; padding: 14px; border-radius: var(--r-m); background: rgb(var(--bk) / calc(0.22 * var(--bk-k))); border: 1px solid var(--line); }
+.data-storage-head { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.data-storage-head b { color: var(--ink); font-size: 14px; }
+.data-bar { display: flex; gap: 2px; height: 10px; border-radius: 10px; overflow: hidden; background: rgb(var(--fg) / 0.08); }
+.data-bar i { display: block; height: 100%; min-width: 3px; }
+.data-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.500px; color: var(--ink-3); }
+.data-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.data-legend i { width: 8px; height: 8px; border-radius: 3px; background: rgb(var(--fg) / 0.25); }
+.data-safe { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 9px 12px; border-radius: 10px; color: var(--ok-text); background: rgb(var(--ok-rgb) / 0.09); border: 1px solid rgb(var(--ok-rgb) / 0.28); }
+.data-warn { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 9px 12px; border-radius: 10px; color: var(--danger-text); background: var(--danger-soft); border: 1px solid rgb(var(--danger-rgb) / 0.35); }
+.data-safe .ico, .data-warn .ico { margin-top: 3px; }
+.data-danger { display: grid; gap: 6px; justify-items: start; margin-top: 22px; padding: 14px; border-radius: var(--r-m); border: 1px solid rgb(var(--danger-rgb) / 0.3); background: rgb(var(--danger-rgb) / 0.05); }
+.data-danger b { color: var(--danger-text); font-size: 14.500px; }
+.data-danger p { font-size: 14px; color: var(--ink-3); }
+
+/* ---------- ヘルプ（操作ガイド・ローマ字の比較表） ---------- */
+
+.help-nav { position: sticky; top: -4px; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 -22px; padding: 8px 22px 10px; background: linear-gradient(180deg, var(--solid) 78%, transparent); }
+.help-nav .chip { cursor: pointer; transition: color 0.2s, background 0.2s, border-color 0.2s; }
+.help-nav .chip:hover { color: var(--ink); background: var(--fill-2); border-color: var(--line-2); }
+.help-sec { scroll-margin-top: 52px; padding: 16px 18px; margin-top: 12px; border-radius: var(--r-m); background: rgb(var(--fg) / 0.03); border: 1px solid var(--line); }
+.help-sec > h3 { margin: 0 0 8px; font-size: 15px; }
+.help-sec h4 { margin: 16px 0 4px; font-size: 14.500px; color: var(--ink); font-weight: 700; scroll-margin-top: 52px; }
+.help-sec li { margin: 5px 0; }
+.help-sec p { margin: 6px 0; }
+.help-sec a { word-break: break-all; }
+.help-keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; margin-bottom: 10px !important; }
+.help-keys li { display: flex; align-items: center; gap: 10px; margin: 0; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.help-keys li > span { flex: none; display: inline-flex; gap: 4px; min-width: 96px; }
+.help-note { font-size: 13.500px; color: var(--ink-3); line-height: 1.7; }
+.help-formula { padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); border: 1px solid rgb(var(--accent-rgb) / 0.28); color: var(--ink); }
+.help-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line); background: rgb(var(--bk) / calc(0.2 * var(--bk-k))); margin-top: 6px; }
+.help-ranks td, .help-ranks th { padding-top: 5px; padding-bottom: 5px; }
+.help-ranks tr.is-tier td { border-top: 1px solid var(--line-2); }
+.help-romaji { margin: 10px 0; }
+.help-romaji .help-nihon { color: var(--accent-text); font-weight: 700; }
+p.help-note { margin-top: 8px; }
+
+/* ---------- チュートリアル ---------- */
+
+/* うしろのキーボードが見えるように、幕をうすくする（選んだ配列・キーボードの種類が、すぐうしろで変わる） */
+.modal-wrap[data-modal="tutorial"] { background: rgb(var(--scrim) / calc(0.4 * var(--scrim-k))); backdrop-filter: none; align-items: start; padding-top: max(20px, 7vh); }
+.modal-wrap[data-modal="tutorial"] .modal { width: min(640px, 100%); max-height: calc(100vh - max(40px, 9vh)); }
+.tut-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.tut-step { font-size: 13.500px; color: var(--ink-3); letter-spacing: 0.08em; }
+.tut-dots { flex: 1 1 0; display: flex; gap: 6px; }
+.tut-dots i { flex: 1 1 0; height: 3px; border-radius: 3px; background: rgb(var(--fg) / 0.12); transition: background 0.3s; }
+.tut-dots i.is-on { background: var(--accent); }
+.tut-body { animation: tutIn 0.35s var(--ease) both; }
+@keyframes tutIn { from { opacity: 0; transform: translateX(10px); } }
+.tut-body h3 { font-size: 18px; margin: 0 0 8px; letter-spacing: 0.02em; }
+.tut-body p { margin: 6px 0; }
+.tut-body li { margin: 6px 0; }
+.tut-options { display: grid; gap: 8px; margin-top: 12px; }
+.tut-option { display: grid; gap: 2px; text-align: left; padding: 11px 14px 11px 40px; position: relative; border-radius: var(--r-m); background: rgb(var(--fg) / 0.035); border: 1px solid var(--line-2); transition: background 0.2s, border-color 0.2s; }
+.tut-option::before { content: ""; position: absolute; left: 14px; top: 15px; width: 14px; height: 14px; border-radius: 50%; border: 1.500px solid var(--line-2); transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+.tut-option:hover { background: var(--fill-2); border-color: rgb(var(--fg) / 0.28); }
+.tut-option b { font-size: 14px; color: var(--ink); }
+.tut-option span { font-size: 13.500px; color: var(--ink-3); line-height: 1.6; }
+.tut-option[aria-pressed="true"] { background: var(--accent-soft); border-color: rgb(var(--accent-rgb) / 0.6); }
+.tut-option[aria-pressed="true"]::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--solid); }
+.tut-note { margin-top: 12px; padding: 10px 13px; border-radius: 10px; font-size: 14px; line-height: 1.7; color: var(--ink-3); background: rgb(var(--fg) / 0.035); border: 1px solid var(--line); }
+.tut-low { display: flex; align-items: center; gap: 14px; }
+.tut-low b { display: block; color: var(--ink); font-size: 14px; }
+.tut-low span { display: block; }
+.tut-note.is-hint { color: var(--accent-text); background: var(--accent-soft); border-color: rgb(var(--accent-rgb) / 0.3); }
+.tut-hint { display: inline-flex; align-items: center; gap: 6px; font-size: 12.500px; color: var(--ink-4); }
+
+/* ---------- キーボード調整・追加のキー ---------- */
+
+.cal-status { display: flex; align-items: flex-start; gap: 9px; margin: 10px 0; padding: 10px 13px; border-radius: 10px; font-size: 14px; color: var(--ink-2); background: rgb(var(--fg) / 0.04); border: 1px solid var(--line-2); }
+.cal-status .ico, .cal-done .ico { flex: none; margin-top: 3px; }
+.cal-status.is-on { color: var(--ok-text); background: rgb(var(--ok-rgb) / 0.09); border-color: rgb(var(--ok-rgb) / 0.3); }
+.cal-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cal-title { font-size: 15px; color: var(--ink); font-weight: 500; }
+.cal-title strong { color: var(--accent-text); }
+.cal-kb { display: grid; justify-content: center; margin: 12px 0 8px; padding: 12px; border-radius: 16px; background: rgb(var(--bk) / calc(0.32 * var(--bk-k))); border: 1px solid var(--line); box-shadow: inset 0 2px 10px rgb(var(--bk) / calc(0.4 * var(--bk-k))); overflow-x: auto; }
+.cal-kb .fk-key { cursor: default; color: var(--ink-3); font-weight: 500; }
+.cal-kb .fk-key.is-current { z-index: 2; color: var(--accent-ink); background: linear-gradient(180deg, var(--accent-2), var(--accent)); border-color: transparent; box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.35), 0 0 22px rgb(var(--accent-rgb) / 0.75); font-weight: 700; animation: calPulse 1.1s ease-in-out infinite; }
+@keyframes calPulse { 50% { box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 0.2), 0 0 30px rgb(var(--accent-rgb) / 0.95); } }
+.cal-kb .fk-key.is-done { color: var(--ok-text); background: linear-gradient(180deg, rgb(var(--ok-rgb) / 0.26), rgb(var(--ok-rgb) / 0.13)); border-color: rgb(var(--ok-rgb) / 0.4); }
+.cal-kb .fk-key.is-skipped { color: var(--ink-4); background: transparent; border-style: dashed; border-color: var(--line-2); text-decoration: line-through; }
+.cal-kb .fk-key.is-pick, .ex-chip { cursor: pointer; color: var(--ink); font-weight: 700; }
+.cal-kb .fk-key.is-pick:hover, .ex-chip:hover { border-color: rgb(var(--fg) / 0.4); }
+.cal-kb .fk-key.is-extra, .ex-chip.is-extra { color: var(--teal-text); background: linear-gradient(180deg, rgb(var(--teal-rgb) / 0.26), rgb(var(--teal-rgb) / 0.12)); border-color: rgb(var(--teal-rgb) / 0.45); }
+.cal-dot { position: absolute; right: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+.cal-message { min-height: 22px; font-size: 14px; font-weight: 500; color: var(--accent-text); line-height: 1.7; }
+.cal-message.is-ok { color: var(--ok-text); }
+.cal-done { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-radius: var(--r-m); background: rgb(var(--fg) / 0.04); border: 1px solid var(--line-2); }
+.cal-done.is-on { color: var(--ok-text); background: rgb(var(--ok-rgb) / 0.08); border-color: rgb(var(--ok-rgb) / 0.3); }
+.modal-foot > .section-note { align-self: center; }
+
+.ex-prompt { display: flex; align-items: center; gap: 14px; min-height: 68px; margin-top: 10px; padding: 10px 14px; border-radius: var(--r-m); background: rgb(var(--fg) / 0.035); border: 1px dashed var(--line-2); font-size: 14px; }
+.ex-prompt.is-waiting { border-style: solid; border-color: rgb(var(--accent-rgb) / 0.55); background: var(--accent-soft); }
+.ex-prompt .grow { display: grid; gap: 1px; }
+.ex-prompt b { font-size: 15px; color: var(--ink); }
+.ex-prompt .grow span { font-size: 12.500px; color: var(--ink-3); }
+.ex-cap { flex: none; display: grid; place-items: center; min-width: 46px; height: 46px; padding: 0 8px; border-radius: 10px; font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--accent-ink); background: linear-gradient(180deg, var(--accent-2), var(--accent)); border-bottom: 3px solid rgb(var(--bk) / calc(0.35 * var(--bk-k))); box-shadow: 0 0 20px rgb(var(--accent-rgb) / 0.5); }
+.ex-cap.is-wide { font-size: 14px; }
+.ex-shifted { --u: 40px; --g: 5px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 4px 0 8px; }
+.ex-shifted-label { font-size: 12.500px; color: var(--ink-3); margin-right: 6px; }
+.ex-chip { position: relative; left: auto; top: auto; width: calc(var(--u) - var(--g)); height: calc(var(--u) - var(--g)); font-size: 14px; }
+.ex-chip.is-current { z-index: 2; color: var(--accent-ink); background: linear-gradient(180deg, var(--accent-2), var(--accent)); border-color: transparent; box-shadow: 0 0 18px rgb(var(--accent-rgb) / 0.75); }
+.ex-conflict { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 6px 0; padding: 11px 13px; border-radius: 10px; color: var(--gold-text); background: rgb(var(--gold-rgb) / 0.08); border: 1px solid rgb(var(--gold-rgb) / 0.4); }
+.ex-conflict .ico { margin-top: 3px; }
+.ex-conflict p { font-size: 14px; font-weight: 500; line-height: 1.7; }
+.ex-conflict .row { grid-column: 1 / -1; justify-content: flex-end; }
+.ex-batch { margin-top: 6px; }
+
+@media (max-width: 860px) {
+  .data-counts { grid-template-columns: 1fr; }
+  .help-keys { grid-template-columns: 1fr; }
+  .help-nav { margin: 0 -22px; }
+  .modal-wrap[data-modal="tutorial"] { padding-top: 12px; }
+}
+
+/* 調整・追加のキーの説明文は、段落の間を少しあける */
+.modal-wrap[data-modal="calib"] .modal-body > p, .modal-wrap[data-modal="extra"] .modal-body > p { margin-bottom: 8px; }
