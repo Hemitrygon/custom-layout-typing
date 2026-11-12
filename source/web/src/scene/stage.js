@@ -1,3 +1,4 @@
+/* global __APP_VERSION__ */
 // 3D の舞台：机の上のキーボード 1 台。画面のキーボードガイドも兼ねる。
 //   - キーの刻印は、選んでいる配列の文字を描き直す（元の刻印の形は隠す）
 //   - 押したキーが沈み、指の色で光る。次に押すキーは静かに灯る
@@ -228,7 +229,7 @@ export class Stage {
   load(baseUrl) {
     const draco = new DRACOLoader().setDecoderPath(baseUrl + 'draco/');
     return new Promise((resolve, reject) => {
-      new GLTFLoader().setDRACOLoader(draco).load(baseUrl + 'models/keyboard.glb', (gltf) => {
+      new GLTFLoader().setDRACOLoader(draco).load(baseUrl + 'models/keyboard.glb?v=' + __APP_VERSION__, (gltf) => {   // 名前に印の付かないファイルなので、版ごとに取り直す
         try {
           this.#setupModel(gltf.scene);
           this.ready = true;

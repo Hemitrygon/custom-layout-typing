@@ -4,7 +4,7 @@
   <a href="https://hemitrygon.github.io/custom-layout-typing/"><img src="https://img.shields.io/badge/%E3%82%B5%E3%82%A4%E3%83%88%E3%82%92%E9%96%8B%E3%81%8F-hemitrygon.github.io-ff7a3d?style=for-the-badge&logo=githubpages&logoColor=white" alt="サイトを開く"></a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-6.0.2-ff7a3d" alt="version 6.0.2">
+  <img src="https://img.shields.io/badge/version-6.0.3-ff7a3d" alt="version 6.0.3">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-3b82f6" alt="License: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/Rust-WebAssembly-654ff0?logo=webassembly&logoColor=white" alt="Rust + WebAssembly">
   <img src="https://img.shields.io/badge/three.js-3D-000000?logo=threedotjs&logoColor=white" alt="three.js">

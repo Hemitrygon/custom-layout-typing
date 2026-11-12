@@ -2,6 +2,7 @@
 //   - 開発サーバーが、web/ の外にある WASM（../core/pkg/）を配れるようにする
 //   - 配るファイルは相対パスで読む（GitHub Pages のどのフォルダに置いても動く）
 //   - 版番号（package.json の version）を、画面のコードに __APP_VERSION__ として渡す
+//   - 配るファイルに version.json（版番号）を置く（古いキャッシュの入れ替えに使う。src/update_check.js）
 //   - ビルドしたページにだけ、読み込み先とプログラムの制限（Content-Security-Policy）を入れる
 //     （開発サーバーは Vite が差し込むスクリプトを使うので、制限を入れると動かない）
 import { defineConfig } from 'vite';
@@ -35,6 +36,12 @@ export default defineConfig({
   server: { fs: { allow: [resolve(WEB, '..')] } },
   build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
   plugins: [{
+    name: 'version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version: VERSION }) + '\n' });
+    },
+  }, {
     name: 'csp-on-build',
     apply: 'build',
     transformIndexHtml(html) {

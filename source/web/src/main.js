@@ -7,6 +7,7 @@ import './styles/words.css';
 import './styles/editor.css';
 import './styles/dialogs.css';
 import { initCore } from './core.js';
+import { checkForUpdate } from './update_check.js';
 import { Stage } from './scene/stage.js';
 import { A, VERSION_LABEL, buildShell, wireApp, initData, mountViews, registerView, applySettings, applyStage, syncSlot, syncLegends, switchTab, currentTheme } from './app.js';
 import * as model from './model.js';
@@ -22,6 +23,7 @@ import { wireHelp, openGuide } from './views/help.js';
 import { wireCalib, openCalibration, suggestCalibration } from './views/calib.js';
 import { wireTutorial, openTutorial, shouldAutoStartTutorial } from './views/tutorial.js';
 
+checkForUpdate();   // 古いキャッシュのときは、新しい版を取り直して読み込み直す（待たない）
 const core = await initCore();
 const params = new URLSearchParams(location.search);
 const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
