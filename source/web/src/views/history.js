@@ -81,7 +81,12 @@ function computeCourseFactors(records, metric) {
     return out;
   };
   const mean = (arr, key) => arr.reduce((a, o) => a + o[key], 0) / arr.length;
-  for (let iter = 0; iter < 40; iter++) {
+  // 新しい配列のように、練習文の切り替えが少ない（前後のほかの練習文が数回分しかない）と、
+  // 係数が回ごとに大小へ振れて発散することがある（+2e+36% のような表示になった）。
+  // そのため、新しい値へ一度に移らず、前の値との中間（対数で半分）へ進める。
+  // 収まる先は v5 の計算と同じで、収まらなかったときは補正しない（全部 1）。
+  let converged = false;
+  for (let iter = 0; iter < 120; iter++) {
     const logs = Object.create(null);
     for (const c of courses) logs[c] = [];
     rows.forEach((x, k) => {
@@ -107,12 +112,13 @@ function computeCourseFactors(records, metric) {
     let maxDelta = 0;
     for (const c of courses) {
       const l = layoutOf[c];
-      const next = nf[c] / Math.exp(sum[l] / cnt[l]);
+      const next = Math.sqrt(f[c] * (nf[c] / Math.exp(sum[l] / cnt[l])));
       maxDelta = Math.max(maxDelta, Math.abs(next - f[c]));
       f[c] = next;
     }
-    if (maxDelta < 0.0005) break;
+    if (maxDelta < 0.0005) { converged = true; break; }
   }
+  if (!converged || courses.some((c) => !Number.isFinite(f[c]) || f[c] <= 0)) for (const c of courses) f[c] = 1;
   return f;
 }
 
