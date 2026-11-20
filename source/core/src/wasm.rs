@@ -61,8 +61,18 @@ fn segs_json(segs: &[Segment]) -> Value {
 }
 
 /// 配列の JSON（保存の形）を読む。読めなければ、その種類の QWERTY。
+/// 練習のときだけ渡す `nKey`（「ん」を 1 打で打つ英字 A〜Z）も読む。
 fn layout_from(json: &str, k: KeyboardType) -> Layout {
-    layout::ensure_layout_keys(&parse(json), k).unwrap_or_else(|| layout::preset_layout("qwerty", k).expect("qwerty はある"))
+    let v = parse(json);
+    let mut l = layout::ensure_layout_keys(&v, k).unwrap_or_else(|| layout::preset_layout("qwerty", k).expect("qwerty はある"));
+    l.n_key = v.get("nKey").and_then(Value::as_str).and_then(|s| {
+        let mut it = s.chars();
+        match (it.next(), it.next()) {
+            (Some(c), None) if c.is_ascii_alphabetic() => Some(c.to_ascii_uppercase()),
+            _ => None,
+        }
+    });
+    l
 }
 
 fn telemetry_json(t: &layout::Telemetry) -> Value {
@@ -699,6 +709,12 @@ impl TypingSession {
     #[wasm_bindgen(js_name = nextChar)]
     pub fn next_char(&self) -> Option<String> {
         self.inner.target_next_char()
+    }
+
+    /// 次の 1 打をリズムの起点にしない（一時停止から戻ったとき。止めていた時間を間隔に入れない）。
+    #[wasm_bindgen(js_name = resetRhythmAnchor)]
+    pub fn reset_rhythm_anchor(&mut self) {
+        self.inner.reset_rhythm_anchor();
     }
 
     /// 今の状態（単位・打ち具合・数・実測の分析）。

@@ -96,6 +96,24 @@ function fileAlert(fileName, reason, safeText) {
   });
 }
 
+// ---------- ファイルの処理が止まったとき ----------
+// ブラウザ（Chrome の更新の直後など）がファイルの処理に答えないまま止まることがある。エラーにならないので、
+// 待つ時間を決めておき、過ぎたら知らせる（あとから答えが来ても使わない）。人が操作する画面（ファイルを選ぶ・許可）は長く待つ。
+const STALL_MS = 5000;             // ファイルの読み出し・覚えている場所の読み出し・書き込みの準備
+const STALL_WRITE_MS = 15000;      // 書き込みと閉じる処理（遅いドライブで大きなファイルを書くこともあるので長め）
+const STALL_PERMISSION_MS = 60000; // 書き込みの許可を求める画面（人が答えるのを待つ）
+const STALL_MESSAGE = '応答がありません、ファイルを選び直してください';
+
+class Stalled extends Error { constructor() { super('stalled'); this.name = 'Stalled'; } }
+
+/** 決めた時間までに終わらなければ Stalled で失敗する。 */
+function withTimeout(promise, ms = STALL_MS) {
+  let timer = 0;
+  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Stalled()), ms); });
+  return Promise.race([Promise.resolve(promise), limit]).finally(() => clearTimeout(timer));
+}
+const isStalled = (e) => e instanceof Stalled;
+
 function importBackup(input) {
   const file = input.files && input.files[0];
   input.value = '';
@@ -103,8 +121,12 @@ function importBackup(input) {
   const keep = '現在のデータは変更されていません';
   if (file.size > BACKUP_FILE_LIMIT) { fileAlert(file.name, 'ファイルが大きすぎます', keep); return; }
   const reader = new FileReader();
-  reader.onerror = () => fileAlert(file.name, 'ファイルを読み取れませんでした', keep);
+  let stalled = false;
+  const watch = setTimeout(() => { stalled = true; try { reader.abort(); } catch { /* 止められなくてもよい */ } toast(STALL_MESSAGE + '（現在のデータは変更されていません）'); }, STALL_MS);
+  reader.onerror = () => { clearTimeout(watch); if (!stalled) fileAlert(file.name, 'ファイルを読み取れませんでした', keep); };
   reader.onload = async () => {
+    clearTimeout(watch);
+    if (stalled) return;
     const v = core.validateBackup(String(reader.result), BACKUP_FILE_LIMIT);
     if (!v.ok) { fileAlert(file.name, v.reason, keep); return; }
     const when = v.exportedAt ? formatDate(v.exportedAt) : '日時不明';
@@ -187,7 +209,7 @@ async function overwriteBackup(pick) {
   warnUnsaved();
   let handle = null;
   try {
-    if (!pick) handle = await loadHandle();
+    if (!pick) handle = await withTimeout(loadHandle());
     if (!handle) {
       const picked = await window.showOpenFilePicker({
         id: 'typing-backup', multiple: false, excludeAcceptAllOption: true,
@@ -196,7 +218,8 @@ async function overwriteBackup(pick) {
       handle = picked && picked[0];
     }
   } catch (e) {
-    if (!(e && e.name === 'AbortError')) toast('ファイルを選択できませんでした');
+    if (isStalled(e)) toast(STALL_MESSAGE);
+    else if (!(e && e.name === 'AbortError')) toast('ファイルを選択できませんでした');
     return;
   }
   if (!handle) return;
@@ -204,14 +227,16 @@ async function overwriteBackup(pick) {
   let info;
   try {
     // 先に許可：覚えているファイルも、ブラウザを開き直したあとは許可が要る
-    if (handle.queryPermission && (await handle.queryPermission({ mode: 'readwrite' })) !== 'granted'
-      && (await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
+    if (handle.queryPermission && (await withTimeout(handle.queryPermission({ mode: 'readwrite' }))) !== 'granted'
+      && (await withTimeout(handle.requestPermission({ mode: 'readwrite' }), STALL_PERMISSION_MS)) !== 'granted') {
       toast('書き込みが許可されなかったため、上書きしませんでした');
       return;
     }
-    const file = await handle.getFile();
-    info = file.size > BACKUP_FILE_LIMIT ? { ok: false, reason: 'ファイルが大きすぎます' } : core.validateBackup(await file.text(), BACKUP_FILE_LIMIT);
-  } catch {
+    const file = await withTimeout(handle.getFile());
+    info = file.size > BACKUP_FILE_LIMIT ? { ok: false, reason: 'ファイルが大きすぎます' } : core.validateBackup(await withTimeout(file.text()), BACKUP_FILE_LIMIT);
+  } catch (e) {
+    // 止まったときは、ファイルがなくなったのではないので、覚えている場所は消さない
+    if (isStalled(e)) { toast(STALL_MESSAGE + '（' + untouched + '）'); return; }
     if (!pick) { await forgetHandle(); if (dialog) renderOverwrite(); toast('前回のファイルが見つからなかったため、もう一度選択してください'); }
     else fileAlert(handle.name, 'ファイルを読み取れませんでした', 'ファイルは書き換えていません');
     return;
@@ -231,12 +256,28 @@ async function overwriteBackup(pick) {
     ok: '上書き保存する', danger: fewer,
   });
   if (!ok) return;
+  let writable = null, closing = false, gaveUp = false;
+  const abortWritable = (w) => { try { if (w) w.abort().catch(() => {}); } catch { /* 止められなくてもよい */ } };
   try {
-    const writable = await handle.createWritable();
-    await writable.write(backupText());
-    await writable.close();
-  } catch {
-    toast('書き込めなかったため、ファイルを開いていないか確認してください');
+    // Chrome は別の一時ファイルに書いてから、閉じるときに入れ替えるので、閉じる前に止めれば元のファイルはそのまま
+    const opening = handle.createWritable();
+    // 待ちきれなかったあとで開けたときは、書かずに閉じる（一時ファイルを残さない）。
+    // ふつうに開けたときは、この then が先に動くので、待ちきれなかったかどうかは gaveUp で見る
+    opening.then((w) => { if (gaveUp) abortWritable(w); }, () => {});
+    writable = await withTimeout(opening);
+    await withTimeout(writable.write(backupText()), STALL_WRITE_MS);
+    closing = true;
+    await withTimeout(writable.close(), STALL_WRITE_MS);
+  } catch (e) {
+    if (isStalled(e)) {
+      if (!writable) gaveUp = true;
+      // 閉じる途中で止まったときは、入れ替えが終わったかを確かめられない
+      if (closing) toast(STALL_MESSAGE + '（書き込みが終わったかを確かめられませんでした）');
+      else { abortWritable(writable); toast(STALL_MESSAGE + '（' + untouched + '）'); }
+    } else {
+      if (!closing) abortWritable(writable);
+      toast('書き込めなかったため、ファイルを開いていないか確認してください');
+    }
     return;
   }
   await saveHandle(handle);
@@ -275,7 +316,8 @@ async function renderOverwrite() {
     setHtml(box, html`<p class="section-note">前回のファイルへの上書き保存は Chrome と Edge で使用できます</p>`);
     return;
   }
-  const handle = await loadHandle();
+  // 止まっても、ほかの部分は使えるように：覚えているファイルはないものとして、選び直すボタンだけを出す
+  const handle = await withTimeout(loadHandle()).catch(() => null);
   if (!dialog) return;
   setHtml(box, html`<div class="row wrap">
       ${handle ? html`<button class="btn btn-teal" data-d="overwriteLast">「${handle.name}」に上書き保存</button>` : ''}

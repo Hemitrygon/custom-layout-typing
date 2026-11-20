@@ -147,7 +147,7 @@ pub fn next_rank(score: f64) -> Option<&'static ScoreRank> {
 pub struct Rhythm {
     /// 止まらずに打てた割合（0〜1）。間隔が 10 個より少ないときは `None`。
     pub smooth: Option<f64>,
-    /// 止まった回数（その回の間隔の中央値の 2 倍以上かかった打鍵）。
+    /// 止まった回数（基準の 2 倍以上かかった打鍵。基準は [`compute_rhythm`]）。
     pub stalls: usize,
     /// 間隔の数。
     pub samples: usize,
@@ -155,7 +155,28 @@ pub struct Rhythm {
     pub mul: f64,
 }
 
+/// 基準を求めるときに除く、速い方の間隔の割合。
+const RHYTHM_FAST_TRIM: f64 = 0.25;
+/// その打鍵のまわり（前後それぞれ）の間隔の数。
+const RHYTHM_LOCAL_SIDE: usize = 10;
+
+fn median_of(sorted: &[f64]) -> f64 {
+    let mid = sorted.len() / 2;
+    if sorted.len() % 2 == 1 {
+        sorted[mid]
+    } else {
+        (sorted[mid - 1] + sorted[mid]) / 2.0
+    }
+}
+
 /// 打鍵の間隔（ミリ秒）の並びから、リズムを求める。長さに左右されない割合で表す。
+///
+/// 止まったとみなすのは、基準の 2 倍以上かかった打鍵。基準は次の 2 つの大きい方（v6.1.0 から）：
+/// - 全体の中央値。ただし速い方の 1/4 を除いて求める（得意な並びを速く打てても、基準が下がりすぎない）
+/// - その打鍵の前後 10 個ずつの中央値（長く速く打てた所があっても、ふつうの速さで打てた所を止まりにしない）
+///
+/// 旧版（v5）は全体の中央値だけを基準にしていた。基準はいつも旧版以上なので、止まりの数は旧版より増えない。
+/// そのかわり、ゆっくり打っている区間では、まわりの基準が上がるので、旧版なら止まりだった打鍵を数えないことがある。
 pub fn compute_rhythm(intervals: &[f64]) -> Rhythm {
     if intervals.len() < 10 {
         return Rhythm {
@@ -167,13 +188,17 @@ pub fn compute_rhythm(intervals: &[f64]) -> Rhythm {
     }
     let mut sorted = intervals.to_vec();
     sorted.sort_by(f64::total_cmp);
-    let mid = sorted.len() / 2;
-    let median = if sorted.len() % 2 == 1 {
-        sorted[mid]
-    } else {
-        (sorted[mid - 1] + sorted[mid]) / 2.0
-    };
-    let stalls = intervals.iter().filter(|&&x| x >= median * 2.0).count();
+    let trim = (sorted.len() as f64 * RHYTHM_FAST_TRIM).floor() as usize;
+    let overall = median_of(&sorted[trim..]);
+    let stalls = (0..intervals.len())
+        .filter(|&i| {
+            let lo = i.saturating_sub(RHYTHM_LOCAL_SIDE);
+            let hi = (i + RHYTHM_LOCAL_SIDE + 1).min(intervals.len());
+            let mut around = intervals[lo..hi].to_vec();
+            around.sort_by(f64::total_cmp);
+            intervals[i] >= overall.max(median_of(&around)) * 2.0
+        })
+        .count();
     let rate = stalls as f64 / intervals.len() as f64;
     Rhythm {
         smooth: Some(1.0 - rate),
@@ -221,6 +246,17 @@ mod tests {
         let rhythm = compute_rhythm(&[120.0, 130.0, 110.0, 400.0, 125.0, 118.0, 122.0, 140.0, 135.0, 128.0, 119.0, 500.0]);
         assert_eq!(rhythm.stalls, 2);
         assert_eq!(compute_composite_score(300.0, 0.97, Some(&rhythm)).score, 1342.0);
+    }
+
+    #[test]
+    fn fast_passages_do_not_turn_normal_keys_into_stalls() {
+        // 得意な並び（60 ms）を 55 打、ふつうの速さ（130 ms）を 45 打。旧版（v5）は中央値が 60 になり、ふつうの 45 打が全部止まりだった
+        let mut iv = vec![60.0; 55];
+        iv.extend(vec![130.0; 45]);
+        assert_eq!(compute_rhythm(&iv).stalls, 0);
+        // 本当に止まった所（ふつうの 3 倍）は数える
+        iv[80] = 400.0;
+        assert_eq!(compute_rhythm(&iv).stalls, 1);
     }
 
     #[test]

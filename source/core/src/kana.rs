@@ -726,6 +726,22 @@ pub fn english_chunks(text: &str, typeable: &HashSet<char>) -> Vec<Chunk> {
         .collect()
 }
 
+/// 「ん」を 1 打で打つ英字（`key`。IME で Q →「ん」のようにしているとき）を反映する。
+/// 「ん」は `key` 1 つを第一の候補にする（ほかの打ち方も受ける）。ほかのかなでは、`key` を含む打ち方（く の QU など）を除く
+/// （IME ではその英字を打つと「ん」になるため）。除くと打ち方がなくなるかな（`key` が K なら き の KI だけ）は、そのまま残す。
+pub fn apply_n_key(chunks: &mut [Chunk], key: char) {
+    let key = key.to_ascii_uppercase();
+    let single = key.to_string();
+    for chunk in chunks {
+        if chunk.kana == "ん" {
+            chunk.options.retain(|o| *o != single);
+            chunk.options.insert(0, single.clone());
+        } else if chunk.options.iter().any(|o| !o.contains(key)) {
+            chunk.options.retain(|o| !o.contains(key));
+        }
+    }
+}
+
 /// 今の配列で打てない文字を含む打ち方を除く（候補がなくなったチャンクは飛ばされる）。
 pub fn drop_untypeable_options(chunks: &mut [Chunk], typeable: &HashSet<char>) {
     for chunk in chunks {
@@ -761,6 +777,23 @@ mod tests {
         assert_eq!(c[1].options[0], "NN");
         let c = build_kana_chunks("さんぽ", Style::Hepburn);
         assert_eq!(c[1].options[0], "M");
+    }
+
+    #[test]
+    fn n_key_types_n_in_one_stroke() {
+        let mut c = build_kana_chunks("くぁんく", Style::Nihon);
+        apply_n_key(&mut c, 'q');
+        assert_eq!(opts(&c)[0].1, vec!["KWA".to_string()]);
+        assert_eq!(c[1].options, vec!["Q", "N", "NN", "XN"]);
+        assert_eq!(c[2].options, vec!["KU", "CU"]);
+        // 自分で決めたローマ字でも、Q を含む打ち方は除く（IME では打てないため）
+        let mut c = vec![Chunk::new("く", strings(&["QU", "KU"]))];
+        apply_n_key(&mut c, 'Q');
+        assert_eq!(c[0].options, vec!["KU"]);
+        // 除くと打ち方がなくなるかなは、そのまま残す
+        let mut c = build_kana_chunks("き", Style::Nihon);
+        apply_n_key(&mut c, 'K');
+        assert_eq!(c[0].options, vec!["KI"]);
     }
 
     #[test]

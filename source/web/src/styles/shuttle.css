@@ -64,7 +64,8 @@ body[data-shuttle="1"] #top, body[data-shuttle="1"] #views { visibility: hidden;
 #shuttle .t-now { color: #fff; }
 #shuttle .t-now::after { background: var(--sh); box-shadow: 0 0 12px var(--sh); }
 .sh-prompt.is-miss .t-now { color: var(--danger); }
-.sh-cracks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 90, 100, 0.9)); }
+/* 文の箱のまわりの枠（shuttle.js の CRACK_MX・CRACK_MY と同じ幅）。ひびは文に重ねない */
+.sh-cracks { position: absolute; inset: -34px -96px; width: calc(100% + 192px); height: calc(100% + 68px); pointer-events: none; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 90, 100, 0.9)); }
 /* 線の太さは画面の px（vector-effect）。最初は見えず、割合を超えた線から、ぱっと走るように現れる */
 .sh-cracks path { fill: none; stroke: rgba(255, 255, 255, 0.8); stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: 0; transition: opacity 0.18s ease-out; }
 .sh-cracks path.is-on { opacity: 1; }

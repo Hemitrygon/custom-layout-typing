@@ -148,6 +148,8 @@ export class TypingSession {
   inputWouldMatch(ch) { return this.inner.inputWouldMatch(ch); }
   /** 次に打つ文字（ガイド用）。 */
   nextChar() { return this.inner.nextChar() ?? null; }
+  /** 次の 1 打をリズムの起点にしない（一時停止から戻ったとき）。 */
+  resetRhythmAnchor() { this.inner.resetRhythmAnchor(); }
   /** 今の状態：{wordIndex, words, chunkIndex, chunks:[{kana, options, typed, skipped}], finished, correct, mistakes, combo, ...} */
   state() { return J(this.inner.state()); }
   /** 練習の結果（何も打たなかったら null）。meta：{elapsedMs, isEnglish, courseKey, courseName, groupName, layoutKey, layoutName, id, timestamp} */

@@ -3,7 +3,7 @@
 //   - 通常の面 / Shift と一緒の面、担当する指、プリセット 4 つと保存枠 5 つ、JSON・AutoHotkey の読み書き、配列分析
 // 文字の割り当て・入れ替え・点検・分析の計算は Rust（core）。ここは画面の流れと、元に戻す（undo）。
 import { core } from '../core.js';
-import { S, bus, BUILTIN_LAYOUT_KEYS, CUSTOM_SLOT_KEYS, selectLayout, loadLayouts, refreshReader, saveLayoutToSlot, isCustomSlot, slotHasData, setSetting, currentWords, currentLang, clone } from '../model.js';
+import { S, bus, BUILTIN_LAYOUT_KEYS, CUSTOM_SLOT_KEYS, selectLayout, loadLayouts, refreshReader, saveLayoutToSlot, isCustomSlot, slotHasData, setSetting, currentWords, currentLang, clone, nKeyOf, setNKey, sessionLayout } from '../model.js';
 import { $, $$, html, setHtml, act, downloadText } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { toast, confirmDialog, choiceDialog, openModal } from '../ui/overlay.js';
@@ -386,6 +386,7 @@ export const editorView = {
               <span class="grow"></span>
               <label class="check"><input type="checkbox" id="edOptAdvance" data-change="ed.optAdvance">割り当てたら次のキーへ進む</label>
               <label class="check" title="オンなら 2 つのキーの文字を入れ替え、オフなら上書きします"><input type="checkbox" id="edOptSwap" data-change="ed.optSwap">使用中の文字は入れ替える</label>
+              <label class="check" title="IME で Q を「ん」にしている場合に使います（この配列だけに効き、すぐに反映されます・NN などの打ち方も使えます）"><input type="checkbox" id="edNKey" data-change="ed.nKey">Q で「ん」を打つ</label>
             </div>
             <div class="kc-groups" id="edPalette"></div>
             <div class="ed-health" id="edHealth"></div>
@@ -440,6 +441,11 @@ export const editorView = {
       'ed.finger': (i) => setFinger(Number(i)),
       'ed.optAdvance': (v) => setSetting('editorAutoAdvance', v === 'true'),
       'ed.optSwap': (v) => setSetting('editorSwapOnAssign', v === 'true'),
+      'ed.nKey': (v) => {
+        const on = v === 'true';
+        setNKey(S.activeLayoutKey, on ? 'Q' : null);
+        toast(on ? '「' + S.layout.name + '」では Q で「ん」を打てるようにしました（く の QU などは使えなくなります）' : '「' + S.layout.name + '」の Q で「ん」を打つ設定を解除しました');
+      },
       'ed.shiftClear': () => clearShift(false),
       'ed.shiftClearAll': () => clearShift(true),
       'ed.analyzer': (v) => { E.analyzer = v === 'live' ? 'live' : 'theory'; renderAnalyzer(); },
@@ -563,6 +569,7 @@ function renderAll() {
   setHtml('#edLegend', FINGERS.filter((_, i) => i !== 4 && i !== 5).map((f) => html`<span class="ed-finger-chip" style="--fc:${f.color}"><i></i>${f.name}</span>`));
   $('#edOptAdvance').checked = Boolean(S.settings.editorAutoAdvance);
   $('#edOptSwap').checked = Boolean(S.settings.editorSwapOnAssign);
+  $('#edNKey').checked = nKeyOf(S.activeLayoutKey) === 'Q';
   renderEdited();
 }
 
@@ -712,8 +719,8 @@ function scheduleAnalyzer() {
 
 function theoryData() {
   // 配列・練習文・ローマ字方式が実際に変わったときだけ計算し直す
-  const key = JSON.stringify([S.layout, currentWords(), S.romajiStyle, currentLang(), S.kind]);
-  if (E.theory.key !== key) E.theory = { key, data: core.theoreticalTelemetry(S.layout, S.kind, currentWords(), S.romajiStyle, currentLang() === 'en') };
+  const key = JSON.stringify([sessionLayout(), currentWords(), S.romajiStyle, currentLang(), S.kind]);
+  if (E.theory.key !== key) E.theory = { key, data: core.theoreticalTelemetry(sessionLayout(), S.kind, currentWords(), S.romajiStyle, currentLang() === 'en') };
   return E.theory.data;
 }
 

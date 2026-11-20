@@ -4,7 +4,7 @@
   <a href="https://hemitrygon.github.io/custom-layout-typing/"><img src="https://img.shields.io/badge/%E3%82%B5%E3%82%A4%E3%83%88%E3%82%92%E9%96%8B%E3%81%8F-hemitrygon.github.io-ff7a3d?style=for-the-badge&logo=githubpages&logoColor=white" alt="サイトを開く"></a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-6.0.4-ff7a3d" alt="version 6.0.4">
+  <img src="https://img.shields.io/badge/version-6.1.5-ff7a3d" alt="version 6.1.5">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-3b82f6" alt="License: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/Rust-WebAssembly-654ff0?logo=webassembly&logoColor=white" alt="Rust + WebAssembly">
   <img src="https://img.shields.io/badge/three.js-3D-000000?logo=threedotjs&logoColor=white" alt="three.js">
@@ -71,6 +71,7 @@
 VIAL と同じ要領で、キーを選んで文字を割り当てる配列エディタ
 ドラッグでキーの入れ替え、Shift と一緒に押したときの文字、担当する指も自由に設定
 JSON と AutoHotkey（.ahk）で読み込み・書き出し
+IME で Q を「ん」にしている人のために、Q 1 打で「ん」を打てる設定も（配列ごと）
 配列分析で、ホーム段の使用率・左右の手のバランス・左右交互打鍵率・同指連続率を、実測と理論値で比較
 
 ### 記録
@@ -80,6 +81,7 @@ JSON と AutoHotkey（.ahk）で読み込み・書き出し
 スコア・WPM・文字/分・正確率・リズムの推移をグラフで表示し、配列ごとに色分け
 難易度補正で、練習文ごとの点の取りやすさをそろえて公平に比較
 練習文ごとの得意・不得意と、配列別のスコアも一覧に
+少しだけ変えた配列の記録を、元の配列の記録としてまとめて集計（記録はそのまま残り、いつでも解除できる）
 
 <img src="readme/hist_shuttle.webp" width="800" alt="記録の画面（シャトルランとトロフィー）">
 

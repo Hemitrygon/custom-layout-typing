@@ -1,7 +1,7 @@
 // 「記録」の画面：通常の練習（スコアの推移・練習文ごとの得意不得意・配列別・一覧）と、シャトルラン（トロフィー・記録）。
 // 数の整え方は Rust。絞り込み・難易度補正・グラフの描画はここ。
 import { core } from '../core.js';
-import { S, bus, loadHistory, saveHistory } from '../model.js';
+import { S, bus, loadHistory, saveHistory, groupById, layoutMerges, recordLayoutName, setLayoutMerge } from '../model.js';
 import { K, lsRead, lsWrite, lsRemove, rawGet, storageAvailable } from '../store.js';
 import { $, html, raw, setHtml, act, formatDate, esc } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -20,8 +20,11 @@ const H = {
   dateAxis: true,
   factors: {},
   active: false,
+  merges: Object.create(null),   // 記録をまとめる配列 {まとめる配列の名前: まとめ先}（描くたびに読む）
+  view: [],                      // 記録（まとめた配列は、まとめ先の名前に置き換えたもの。元の名前は mergedFrom）
 };
 let resizeTimer = 0;
+const GAP_OTHERS = 5;   // 配列ごとの線を結ばない、間に挟まったほかの配列の回数（v6.1.2）
 
 const METRICS = {
   score: { label: 'スコア', unit: '', get: (r) => r.score, fmt: (v) => Math.round(v).toLocaleString(), zeroBase: true },
@@ -33,7 +36,16 @@ const METRICS = {
 const CORRECTABLE = ['score', 'wpm', 'cpm'];   // 速さに関わる数だけ、練習文の難しさで補正する
 
 const courseKeyOf = (r) => r.courseKey || 'name:' + (r.presetName || '');
-const courseNameOf = (r) => r.courseName || r.presetName || '練習文';
+// 練習文の名前は、記録したときの名前ではなく今の名前を出す（あとで名前を変えても、すぐ反映する。v6.1.1）。
+// 消したプリセット・グループは、記録したときの名前のまま
+function courseNameOf(r) {
+  const key = courseKeyOf(r);
+  let m = /^p:(.+)$/.exec(key);
+  if (m) { const p = S.presets.find((x) => x && x.id === m[1]); if (p && p.name) return p.name; }
+  m = /^g:(.+):mix$/.exec(key);
+  if (m) { const g = groupById(m[1]); if (g && g.name) return g.name + '（全シャッフル）'; }
+  return r.courseName || r.presetName || '練習文';
+}
 const factorKey = (r) => (r.layoutName || '') + '\n' + courseKeyOf(r);
 const metricValue = (r, m) => { const v = METRICS[m].get(r); return typeof v === 'number' && Number.isFinite(v) ? v : null; };
 const median = (arr) => { const s = arr.slice().sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -42,7 +54,7 @@ const median = (arr) => { const s = arr.slice().sort((a, b) => a - b); const m =
 
 let colorCache = { src: null, len: -1, map: null };
 function layoutColor(name) {
-  const hist = S.history;
+  const hist = H.view;
   if (colorCache.src !== hist || colorCache.len !== hist.length) {
     const map = new Map();
     let next = 0;
@@ -159,6 +171,12 @@ export const historyView = {
       'hist.delete': (id) => deleteRecord(id),
       'hist.clear': () => clearAll(),
       'hist.clearShuttle': () => clearShuttle(),
+      'hist.merge': (to, node) => {
+        const from = node.dataset.from;
+        if (typeof from !== 'string') return;
+        setLayoutMerge(from, to);
+        toast(to ? '「' + from + '」の記録を「' + to + '」にまとめて集計します（記録はそのまま残り、いつでも解除できます）' : '「' + from + '」の記録を分けて集計するように戻しました');
+      },
     });
     bus.on('history', () => { if (H.active) render(); });
     // 別のウィンドウで記録が増えた・消えたときは、読み直してから描く
@@ -176,7 +194,18 @@ export const historyView = {
   leave() { H.active = false; },
 };
 
+/** まとめた配列を、まとめ先の名前で数える記録の並び（記録そのものは書き換えない）。 */
+function mergedView(list) {
+  if (!Object.keys(H.merges).length) return list;
+  return list.map((r) => {
+    const to = recordLayoutName(r.layoutName, H.merges);
+    return to === (r.layoutName || '') ? r : { ...r, layoutName: to, mergedFrom: r.layoutName };
+  });
+}
+
 function render() {
+  H.merges = layoutMerges();
+  H.view = mergedView(S.history);
   for (const b of document.querySelectorAll('[data-act="hist.kind"]')) b.setAttribute('aria-pressed', String(b.dataset.arg === H.kind));
   $('#histLead').textContent = H.kind === 'shuttle'
     ? 'トロフィーは配列に関係なく獲得でき、記録を削除しても残ります'
@@ -187,7 +216,7 @@ function render() {
 // ---------- 通常の練習 ----------
 
 function renderNormal() {
-  const all = S.history;
+  const all = H.view;
   const layoutNames = [];
   for (const r of all) if (r.layoutName && !layoutNames.includes(r.layoutName)) layoutNames.push(r.layoutName);
   if (H.layout !== 'all' && !layoutNames.includes(H.layout)) H.layout = 'all';
@@ -270,15 +299,53 @@ function renderNormal() {
       </section>
     </div>
 
+    ${mergeCardHtml()}
+
     <section class="card hist-card">
       <h2 class="section-title">完走の一覧</h2>
       <div class="hist-records" id="histRecords"></div>
     </section>`);
   for (const p of document.querySelectorAll('#histBody .hist-stats .rank-pill')) p.style.setProperty('--rank', p.dataset.c);
+  for (const d of document.querySelectorAll('#histBody .hist-merge .dot')) d.style.color = d.dataset.c;
   renderChart(filtered, corrected);
   renderCourses();
   renderLayoutBars();
   renderRecords(filtered);
+}
+
+// ---------- 配列の記録をまとめる ----------
+
+/** 記録にある配列の名前（元の名前。通常の練習とシャトルランの両方）。 */
+function recordedLayoutNames() {
+  const names = [];
+  const add = (n) => { if (n && !names.includes(n)) names.push(n); };
+  for (const r of S.history) add(r.layoutName);
+  for (const r of core.loadShuttleHistory(lsRead(K.shuttle))) add(r.layoutName);
+  // まとめる設定に出てくる配列は、記録がなくなっても出す（記録を消したあとでも、解除・変更できるように）
+  for (const [from, to] of Object.entries(H.merges)) { add(from); add(to); }
+  return names;
+}
+
+function mergeCardHtml() {
+  const names = recordedLayoutNames();
+  if (names.length < 2) return '';
+  const targets = new Set(Object.values(H.merges));
+  const option = (value, label, cur) => html`<option value="${value}" ${cur === value ? raw('selected') : ''}>${label}</option>`;
+  const rows = names.map((n) => {
+    const cur = Object.prototype.hasOwnProperty.call(H.merges, n) ? H.merges[n] : '';
+    // まとめ先になっている配列は、ほかへまとめられない（まとめるのは 1 段だけ）
+    const choices = targets.has(n) ? [] : names.filter((x) => x !== n && !Object.prototype.hasOwnProperty.call(H.merges, x));
+    return html`<div class="hist-merge-row"><b><i class="dot" data-c="${layoutColor(recordLayoutName(n, H.merges))}"></i>${n}</b>
+      ${choices.length
+        ? html`<select class="field" data-change="hist.merge" data-from="${n}" aria-label="「${n}」の記録のまとめ先">${option('', '分けて集計', cur)}${choices.map((x) => option(x, '「' + x + '」にまとめる', cur))}</select>`
+        : html`<span class="faint">ほかの配列のまとめ先</span>`}</div>`;
+  });
+  return html`<section class="card hist-card">
+    <h2 class="section-title">配列の記録をまとめる</h2>
+    <p class="section-note">少しだけ変えた配列などを、元の配列と同じ配列として集計します（グラフ・最高記録・配列別・難易度補正・自己ベストの判定・シャトルランの配列ごとの最高）</p>
+    <div class="hist-merge">${rows}</div>
+    <p class="section-note">記録そのものは書き換えないため、「分けて集計」に戻せば元どおりになります</p>
+  </section>`;
 }
 
 function niceCeil(v) {
@@ -305,7 +372,7 @@ function renderChart(records, correctedView) {
   const names = [];
   for (const p of pts) { const n = p.r.layoutName || '不明'; if (!names.includes(n)) names.push(n); }
   const firstSeen = new Map();
-  S.history.forEach((r, k) => { const n = r.layoutName || '不明'; if (!firstSeen.has(n)) firstSeen.set(n, k); });
+  H.view.forEach((r, k) => { const n = r.layoutName || '不明'; if (!firstSeen.has(n)) firstSeen.set(n, k); });
   names.sort((a, b) => (firstSeen.get(a) || 0) - (firstSeen.get(b) || 0));
   const split = filterAll && names.length >= 2 && H.allMode === 'split';
 
@@ -325,7 +392,10 @@ function renderChart(records, correctedView) {
   // 横軸：回の番号と、日付（同じ日が続くときは最初の 1 つだけ。年をまたぐときは年も）
   const xt = [];
   const every = Math.max(1, Math.ceil(pts.length / 12));
-  let prevDay = '', prevYear = null;
+  let prevDay = '';
+  // 日付の文字は、前に出した日付と近すぎると重なるので出さない（日の境の縦線は残す。v6.1.3）
+  let lastDate = null;   // {x, w, year}：最後に出した日付（年は、出した日付と年が違うときに付ける）
+  const dateWidth = (label) => label.length * 8 + 4;   // 字間を含めた数字の幅の目安
   pts.forEach((p, i) => {
     const d = new Date(p.r.timestamp);
     const day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
@@ -333,17 +403,25 @@ function renderChart(records, correctedView) {
     if (i % every === 0 || i === pts.length - 1) xt.push(`<text class="xtick" x="${x(i).toFixed(1)}" y="${HH - padB + 16}">#${p.n}</text>`);
     if (H.dateAxis && newDay) {
       if (i > 0) xt.push(`<line class="day" x1="${(x(i) - (x(1) - x(0)) / 2).toFixed(1)}" x2="${(x(i) - (x(1) - x(0)) / 2).toFixed(1)}" y1="${padT}" y2="${HH - padB}"/>`);
-      const label = (prevYear !== null && d.getFullYear() !== prevYear ? d.getFullYear() + '/' : '') + (d.getMonth() + 1) + '/' + d.getDate();
-      xt.push(`<text class="xdate" x="${x(i).toFixed(1)}" y="${HH - padB + 32}">${label}</text>`);
+      const label = (lastDate && d.getFullYear() !== lastDate.year ? d.getFullYear() + '/' : '') + (d.getMonth() + 1) + '/' + d.getDate();
+      const w = dateWidth(label);
+      if (!lastDate || x(i) - lastDate.x >= (lastDate.w + w) / 2 + 6) {
+        xt.push(`<text class="xdate" x="${x(i).toFixed(1)}" y="${HH - padB + 32}">${label}</text>`);
+        lastDate = { x: x(i), w, year: d.getFullYear() };
+      }
     }
-    prevDay = day; prevYear = d.getFullYear();
+    prevDay = day;
   });
 
   const series = split ? names.map((n) => ({ name: n, color: layoutColor(n), idx: pts.map((p, i) => ((p.r.layoutName || '不明') === n ? i : -1)).filter((i) => i >= 0) }))
     : [{ name: filterAll ? '全ての配列' : H.layout, color: filterAll ? layoutColorAll() : layoutColor(H.layout), idx: pts.map((_, i) => i) }];
+  // 配列ごとの線では、間にほかの配列の回が GAP_OTHERS 回以上挟まった所は結ばない（線が横に長く伸びるため）
+  const gapAt = (s, k) => split && k > 0 && s.idx[k] - s.idx[k - 1] - 1 >= GAP_OTHERS;
   const marks = series.map((s) => {
-    const line = s.idx.map((i, k) => (k ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(pts[i].v).toFixed(1)).join(' ');
-    const dots = pts.length <= 60 ? s.idx.map((i) => `<circle class="pt" cx="${x(i).toFixed(1)}" cy="${y(pts[i].v).toFixed(1)}" r="4" fill="${s.color}"/>`).join('') : '';
+    const line = s.idx.map((i, k) => (k && !gapAt(s, k) ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(pts[i].v).toFixed(1)).join(' ');
+    // 点は 60 回分までは全部、それより多いときは前後とつながらない 1 回だけのもの（線にならないので点で見せる）
+    const alone = (k) => (k === 0 || gapAt(s, k)) && (k === s.idx.length - 1 || gapAt(s, k + 1));
+    const dots = s.idx.filter((_, k) => pts.length <= 60 || alone(k)).map((i) => `<circle class="pt" cx="${x(i).toFixed(1)}" cy="${y(pts[i].v).toFixed(1)}" r="4" fill="${s.color}"/>`).join('');
     return `<path class="line" d="${line}" stroke="${s.color}"/>${dots}`;
   }).join('');
   // まとめて 1 本のときは、5 回移動平均も重ねる
@@ -392,7 +470,7 @@ function renderChart(records, correctedView) {
 }
 
 function renderCourses() {
-  const pool = S.history.filter((r) => H.layout === 'all' || r.layoutName === H.layout);
+  const pool = H.view.filter((r) => H.layout === 'all' || r.layoutName === H.layout);
   const layouts = new Map();
   for (const r of pool) {
     if (typeof r.score !== 'number') continue;
@@ -433,7 +511,7 @@ function renderCourses() {
 
 function renderLayoutBars() {
   const mk = H.metric, metric = METRICS[mk];
-  const pool = S.history.filter((r) => H.course === 'all' || courseKeyOf(r) === H.course);
+  const pool = H.view.filter((r) => H.course === 'all' || courseKeyOf(r) === H.course);
   const corrected = correctionActive(pool) && CORRECTABLE.includes(mk);
   $('#histLayoutNote').textContent = '濃い棒＝平均、薄い棒＝最高（全期間）' + (corrected ? '・難易度補正あり' : '');
   const groups = Object.create(null);
@@ -465,7 +543,7 @@ function renderRecords(records) {
     const rank = typeof r.score === 'number' ? core.scoreRank(r.score).rank : null;
     return html`<div class="rec">
       <div class="rec-score">${rank ? html`<span class="rank-pill" data-c="${rank.color}">${rank.rank}</span>` : ''}<b class="num">${typeof r.score === 'number' ? r.score.toLocaleString() : '-'}</b></div>
-      <div class="rec-what"><div class="rec-tags"><span class="chip"><i class="dot" data-c="${layoutColor(r.layoutName)}"></i>${r.layoutName || '配列'}</span><span class="chip chip-accent">${courseNameOf(r)}</span>${r.groupName ? html`<span class="faint">▶ ${r.groupName}</span>` : ''}<span class="faint">${type}</span></div>
+      <div class="rec-what"><div class="rec-tags"><span class="chip"><i class="dot" data-c="${layoutColor(r.layoutName)}"></i>${r.mergedFrom ? html`${r.mergedFrom}<span class="faint">（「${r.layoutName}」にまとめて集計）</span>` : r.layoutName || '配列'}</span><span class="chip chip-accent">${courseNameOf(r)}</span>${r.groupName ? html`<span class="faint">▶ ${r.groupName}</span>` : ''}<span class="faint">${type}</span></div>
         <small class="num faint">${formatDate(r.timestamp)}</small></div>
       <div class="rec-nums num"><span><i>WPM</i><b>${r.wpm || 0}</b></span><span><i>文字/分</i><b>${r.cpm === null || r.cpm === undefined ? '-' : r.cpm}</b></span><span><i>正確率</i><b>${Number(r.accuracy || 0).toFixed(1)}%</b></span><span><i>リズム</i><b>${typeof r.rhythm === 'number' ? r.rhythm.toFixed(1) + '%' : '-'}</b></span></div>
       <button class="icon-btn" data-act="hist.delete" data-arg="${r.id}" aria-label="この記録を削除" title="この記録を削除">${icon.trash}</button>
@@ -522,7 +600,7 @@ function renderShuttle() {
     return;
   }
   const by = Object.create(null);
-  for (const r of list) { const b = by[r.layoutName] || (by[r.layoutName] = { best: r, runs: 0 }); b.runs++; if (r.cleared > b.best.cleared) b.best = r; }
+  for (const r of list) { const ln = recordLayoutName(r.layoutName, H.merges); const b = by[ln] || (by[ln] = { best: r, runs: 0 }); b.runs++; if (r.cleared > b.best.cleared) b.best = r; }
   const names = Object.keys(by).sort((a, b) => by[b].best.cleared - by[a].best.cleared);
   const recent = list.slice(-30);
   const maxLv = Math.max(...recent.map((r) => r.level), 5);
@@ -537,7 +615,7 @@ function renderShuttle() {
     ${trophiesHtml()}
     <div class="hist-two">
       <section class="card hist-card"><h2 class="section-title">配列ごとの最高記録</h2>
-        <div class="hist-list">${names.map((n) => html`<div class="sh-best"><b>${n}</b><span class="num">レベル <strong>${by[n].best.level}</strong></span><small class="num">${by[n].best.cleared} レベルクリア・${formatDate(by[n].best.timestamp, false)}・${by[n].runs} 回挑戦</small></div>`)}</div></section>
+        <div class="hist-list">${names.map((n) => html`<div class="sh-best"><b>${n || '不明'}</b><span class="num">レベル <strong>${by[n].best.level}</strong></span><small class="num">${by[n].best.cleared} レベルクリア・${formatDate(by[n].best.timestamp, false)}・${by[n].runs} 回挑戦</small></div>`)}</div></section>
       <section class="card hist-card"><h2 class="section-title">到達レベルの推移（直近 ${recent.length} 回）</h2>
         <svg viewBox="0 0 ${W} ${HH}" class="sh-hist-chart" role="img" aria-label="到達レベルの推移"><line x1="20" y1="${HH - 16}" x2="${W}" y2="${HH - 16}"/>${bars}</svg></section>
     </div>

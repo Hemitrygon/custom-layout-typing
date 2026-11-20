@@ -2,7 +2,7 @@
 // 画面は暗くなり、キーボードが青緑に灯る。残り時間が減ると、光は橙 → 赤に変わり、文にひびが入る。
 import { showText3d } from '../scene/score3d.js';
 import { core, ShuttleGame } from '../core.js';
-import { S, guideFor } from '../model.js';
+import { S, guideFor, sessionLayout } from '../model.js';
 import { K, lsRead, lsWrite, rawGet, newId, markDataChanged } from '../store.js';
 import { $, $$, html, raw, setHtml, act, formatDate } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -100,7 +100,7 @@ export function mountShuttle(root, context) {
         <div class="sh-kana" id="shKana"></div>
         <div class="sh-kanji" id="shKanji"></div>
         <div class="sh-romaji mono" id="shRomaji"></div>
-        <svg class="sh-cracks" id="shCracks" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <svg class="sh-cracks" id="shCracks" viewBox="0 0 100 40" aria-hidden="true"></svg>
       </div>
       <div class="sh-next" id="shNext"></div>
       <div class="sh-popups" id="shPopups"></div>
@@ -298,7 +298,7 @@ function countdown() {
 
 function begin() {
   const now = performance.now();
-  SH.game = new ShuttleGame(S.layout, S.kind, S.romajiStyle, now, Math.floor(Math.random() * 2 ** 32));
+  SH.game = new ShuttleGame(sessionLayout(), S.kind, S.romajiStyle, now, Math.floor(Math.random() * 2 ** 32));
   SH.virtualShift = {};
   SH.lastBeat = 0;
   const events = SH.game.takeEvents();
@@ -449,34 +449,69 @@ function renderPrompt(s, fresh) {
   } else ctx.stage.setTargets([]);
 }
 
-// 文に入るひび（残り時間が減るほど伸びる）
+// 文のまわりに入るひび（残り時間が減るほど伸びる）
 // ひび 1 本を短い線の集まりにして、残り時間が減るにつれ、根元から 1 本ずつ現れるようにする（途中で枝分かれもする）。
 // data-from：その線が現れる「経過の割合」（0〜1）。残り時間の半分を切ったころから始まる
+// 文に重ねない（v6.1.1）：ひびは文の箱のまわりの枠（外側 CRACK_MX・CRACK_MY の帯）だけに入れ、外のふちから箱に向かって伸び、
+// 箱の手前（CRACK_GAP）で止まる。座標は画面の px（箱の大きさは文ごとに変わるので、文が出たあとに測って作る）
+const CRACK_MX = 96, CRACK_MY = 34, CRACK_GAP = 6;
 function buildCracks(seed) {
-  let s = seed >>> 0;
-  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  const segs = [];
-  const seg = (x0, y0, x1, y1, from, w) => segs.push(`<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)}" data-from="${from.toFixed(3)}" style="stroke-width:${w.toFixed(2)}"/>`);
-  const CRACKS = 7;
-  for (let i = 0; i < CRACKS; i++) {
-    let x = 8 + rnd() * 84, y = rnd() < 0.5 ? 0 : 40;
-    const dir = y === 0 ? 1 : -1;
-    const start = 0.48 + (i / CRACKS) * 0.34;          // 1 本目は 48%、最後は 82% 経過したころから
-    const steps = 4 + Math.floor(rnd() * 4);
-    const stepGap = 0.035;                              // 次の線が現れるまでの間隔（経過の割合）
-    for (let k = 0; k < steps; k++) {
-      const nx = x + (rnd() - 0.5) * 16, ny = y + dir * (4 + rnd() * 7);
-      const from = start + k * stepGap;
-      seg(x, y, nx, ny, from, 1.9 - k * 0.18);           // 根元ほど太く、先ほど細い
-      if (k === 1 || (k === 3 && rnd() < 0.6)) {          // 枝分かれ
-        const bx = nx + (rnd() < 0.5 ? -1 : 1) * (4 + rnd() * 6), by = ny + dir * (2 + rnd() * 4);
-        seg(nx, ny, bx, by, from + stepGap * 1.5, 1.1);
-      }
-      x = nx; y = ny;
-    }
-  }
-  $('#shCracks').innerHTML = segs.join('');
+  $('#shCracks').innerHTML = '';
   SH.dq = -1;
+  requestAnimationFrame(() => {
+    const box = $('#shPrompt'), svg = $('#shCracks');
+    if (!box || !svg) return;
+    const w = box.offsetWidth, h = box.offsetHeight;
+    if (!w || !h) return;   // 画面を閉じた（隠れた）あと
+    const W = w + CRACK_MX * 2, HH = h + CRACK_MY * 2;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + HH);
+    // 入ってはいけない所（文の箱。少し手前で止める）
+    const inner = { l: CRACK_MX - CRACK_GAP, t: CRACK_MY - CRACK_GAP, r: CRACK_MX + w + CRACK_GAP, b: CRACK_MY + h + CRACK_GAP };
+    const inside = (x, y) => x > inner.l && x < inner.r && y > inner.t && y < inner.b;
+    // 線分を、箱に入る手前まで縮める（入らなければそのまま）。途中で箱の角をかすめる線もあるので、線の上を細かく調べる
+    const clip = (x0, y0, x1, y1) => {
+      const N = 24;
+      let hitAt = -1;
+      for (let k = 1; k <= N; k++) if (inside(x0 + (x1 - x0) * (k / N), y0 + (y1 - y0) * (k / N))) { hitAt = k; break; }
+      if (hitAt < 0) return [x1, y1, false];
+      let a = (hitAt - 1) / N, b = hitAt / N;
+      for (let k = 0; k < 12; k++) { const m = (a + b) / 2; if (inside(x0 + (x1 - x0) * m, y0 + (y1 - y0) * m)) b = m; else a = m; }
+      return [x0 + (x1 - x0) * a, y0 + (y1 - y0) * a, true];
+    };
+    let s = seed >>> 0;
+    const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    const segs = [];
+    const seg = (x0, y0, x1, y1, from, wid) => segs.push(`<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)}" data-from="${from.toFixed(3)}" style="stroke-width:${wid.toFixed(2)}"/>`);
+    const CRACKS = 8;
+    for (let i = 0; i < CRACKS; i++) {
+      // 根元：外のふち（上下の辺と左右の辺を順に）。向き：箱の中心へ
+      const side = i % 4;
+      let x, y;
+      if (side === 0) { x = rnd() * W; y = 0; } else if (side === 1) { x = rnd() * W; y = HH; }
+      else if (side === 2) { x = 0; y = rnd() * HH; } else { x = W; y = rnd() * HH; }
+      const len = Math.hypot(W / 2 - x, HH / 2 - y) || 1;
+      const ux = (W / 2 - x) / len, uy = (HH / 2 - y) / len;
+      const step = (side < 2 ? CRACK_MY : CRACK_MX) / 3.2;
+      const start = 0.48 + (i / CRACKS) * 0.34;          // 1 本目は 48%、最後は 82% 経過したころから
+      const steps = 4 + Math.floor(rnd() * 4);
+      const stepGap = 0.035;                              // 次の線が現れるまでの間隔（経過の割合）
+      for (let k = 0; k < steps; k++) {
+        const wob = (rnd() - 0.5) * step * 1.6;
+        const [nx, ny, hit] = clip(x, y, x + ux * step - uy * wob, y + uy * step + ux * wob);
+        const from = start + k * stepGap;
+        seg(x, y, nx, ny, from, 1.9 - k * 0.18);         // 根元ほど太く、先ほど細い
+        if (!hit && (k === 1 || (k === 3 && rnd() < 0.6))) {   // 枝分かれ（箱の外だけ）
+          const turn = rnd() < 0.5 ? -1 : 1, bl = step * (0.6 + rnd() * 0.5);
+          const [bx, by] = clip(nx, ny, nx + (ux - turn * uy) * bl * 0.7, ny + (uy + turn * ux) * bl * 0.7);
+          seg(nx, ny, bx, by, from + stepGap * 1.5, 1.1);
+        }
+        if (hit) break;
+        x = nx; y = ny;
+      }
+    }
+    svg.innerHTML = segs.join('');
+    SH.dq = -1;
+  });
 }
 
 function renderShields(n, streak) {

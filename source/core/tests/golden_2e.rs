@@ -89,7 +89,23 @@ fn records_match_current_version() {
         let got = records::finish_session(&input);
         let ok = match (&got, s(&c["screen"])) {
             (None, screen) => screen != "result",
-            (Some(r), "result") => same(&r.record.clone().unwrap_or(Value::Null), rec),
+            (Some(r), "result") => {
+                // リズムは v6.1.0 でわざと変えた（golden_2a.rs の説明）。リズム・止まり・スコアは今の式で求めた値に置き換えて比べ、
+                // ほかの項目が旧版（v5）と同じことを確かめる。止まりは旧版を超えない。
+                let mut want = rec.clone();
+                if let Some(o) = want.as_object_mut() {
+                    o.insert(
+                        "rhythm".into(),
+                        r.rhythm
+                            .smooth
+                            .map_or(Value::Null, |sm| serde_json::json!((sm * 1000.0).round() / 10.0)),
+                    );
+                    o.insert("stalls".into(), serde_json::json!(r.rhythm.stalls));
+                    o.insert("score".into(), serde_json::json!(r.score.score));
+                }
+                let fewer = r.rhythm.stalls as u64 <= rec["stalls"].as_u64().unwrap_or(0);
+                fewer && same(&r.record.clone().unwrap_or(Value::Null), &want)
+            }
             _ => false,
         };
         d.check(ok, || format!("finishTypingSession {c}: {:?}", got.map(|r| r.record)));

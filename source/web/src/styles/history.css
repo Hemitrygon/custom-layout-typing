@@ -172,3 +172,9 @@
   .rec { grid-template-columns: 100px minmax(0, 1fr) 34px; }
   .rec-nums { grid-column: 1 / -1; grid-row: 2; text-align: left; justify-content: start; }
 }
+
+/* 配列の記録をまとめる（v6.1.0） */
+.hist-merge { display: grid; gap: 8px; margin: 10px 0 6px; }
+.hist-merge-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; min-width: 0; }
+.hist-merge-row b { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.hist-merge-row .field { width: auto; max-width: 100%; }

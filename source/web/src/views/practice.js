@@ -4,7 +4,7 @@
 import { core, TypingSession } from '../core.js';
 import { S, bus, guideFor, courseInfo, sessionWords, sessionSize, isMix, currentPreset, currentWords, groupById, presetById,
   selectPreset, startPlaylist, setPlaylistOrder, playlistJump, playlistAdvance, nextTrackName, syncPlaylist, selectLayout, recordScore,
-  BUILTIN_LAYOUT_KEYS, CUSTOM_SLOT_KEYS, slotHasData, ORDER_LABELS } from '../model.js';
+  BUILTIN_LAYOUT_KEYS, CUSTOM_SLOT_KEYS, slotHasData, ORDER_LABELS, sessionLayout, recordLayoutName, layoutMerges } from '../model.js';
 import { newId } from '../store.js';
 import { $, html, raw, setHtml, act, countUp } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -399,7 +399,7 @@ function startTyping() {
     course, groupName: g ? g.name : null, layoutKey: S.activeLayoutKey, layoutName: S.layout ? S.layout.name : 'カスタム',
     lang: src.lang, langs: src.langs, count: src.words.length,
   };
-  P.session = new TypingSession({ words: src.words, langs: src.langs || undefined, lang: src.lang, style: S.romajiStyle, kind: S.kind, layout: S.layout });
+  P.session = new TypingSession({ words: src.words, langs: src.langs || undefined, lang: src.lang, style: S.romajiStyle, kind: S.kind, layout: sessionLayout() });
   P.virtualShift = {};
   P.remap = { hits: 0, shown: P.remap.shown };
   P.startTime = performance.now();
@@ -422,6 +422,8 @@ export function pause() {
 function resume() {
   if (P.screen !== 'paused') return;
   P.startTime += performance.now() - P.pausedAt;
+  // 止めていた時間はリズムの間隔にも入れない（入れると、再開した 1 打が必ず「止まり」になる。v6.1.4）
+  if (P.session) P.session.resetRhythmAnchor();
   show('typing');
   renderSentence(true);
 }
@@ -663,7 +665,11 @@ function finish() {
     return;
   }
   S.liveTelemetry = { data: stState.live, layoutName: meta.layoutName };   // 配列分析の「実測」に使う
-  const prevBest = core.previousBest(S.history, meta.layoutName, meta.course.key);
+  // 記録をまとめた配列（記録の画面で設定）は、まとめ先と合わせた中でのいちばん
+  const merges = layoutMerges();
+  const prevBest = Object.keys(merges).length
+    ? core.previousBest(S.history.map((r) => ({ ...r, layoutName: recordLayoutName(r.layoutName, merges) })), recordLayoutName(meta.layoutName, merges), meta.course.key)
+    : core.previousBest(S.history, meta.layoutName, meta.course.key);
   const isBest = stState.correct > 0 && prevBest >= 0 && result.score.score > prevBest;
   if (result.record) recordScore(result.record);
   P.result = { result, state: stState, meta, isBest };

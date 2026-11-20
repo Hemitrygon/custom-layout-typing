@@ -28,6 +28,9 @@ export const K = {
   snooze: 'custom_typing_backup_snooze_v1',
   reminderOff: 'custom_typing_backup_reminder_off_v1',
   dataChanged: 'custom_typing_data_changed_v1',
+  // v6.1.0 から（旧版（v5）にはない。バックアップには入り、v5 で読んでも無視される）
+  nKey: 'custom_typing_n_key_v1',              // 配列ごとの「ん」を 1 打で打つ英字 {配列のキー: 'Q'}
+  layoutMerge: 'custom_typing_layout_merge_v1', // 記録をまとめる配列 {まとめる配列の名前: まとめ先の配列の名前}
 };
 export const PREFIXES = ['custom_typing_', 'typecraft_'];
 export const COMPRESSIBLE = [K.presets, K.groups, K.history, K.shuttle];

@@ -145,6 +145,75 @@ export function selectLayout(key, { silent = false } = {}) {
   if (!silent) bus.emit('layout');
 }
 
+// ---------- 「ん」を 1 打で打つ英字（配列ごと。v6.1.0 から） ----------
+
+/** 名前を項目名に使う入れ物を読む（壊れていれば空）。値は文字列だけ残す。 */
+function readNameMap(key) {
+  const out = Object.create(null);
+  try {
+    const v = JSON.parse(lsRead(key) || 'null');
+    if (v && typeof v === 'object' && !Array.isArray(v)) for (const [k, x] of Object.entries(v)) if (k && typeof x === 'string' && x) out[k] = x;
+  } catch { /* 読めなければ空 */ }
+  return out;
+}
+function writeNameMap(key, map) {
+  if (Object.keys(map).length) lsWrite(key, JSON.stringify(map)); else lsRemove(key);
+  markDataChanged();
+}
+
+/** その配列で「ん」を 1 打で打つ英字（なければ null）。 */
+export function nKeyOf(layoutKey) {
+  const v = readNameMap(K.nKey)[layoutKey];
+  return v && /^[A-Z]$/.test(v) ? v : null;
+}
+
+/** 「ん」を 1 打で打つ英字を決める（null で使わない）。 */
+export function setNKey(layoutKey, letter) {
+  if (!layoutKey) return;
+  const map = readNameMap(K.nKey);
+  if (letter) map[layoutKey] = letter; else delete map[layoutKey];
+  writeNameMap(K.nKey, map);
+  bus.emit('layout');   // 練習のやり直し・配列分析の計算し直し
+}
+
+/** 練習に渡す配列（今の配列に「ん」の 1 打の英字を足したもの）。 */
+export function sessionLayout() {
+  const nKey = nKeyOf(S.activeLayoutKey);
+  return nKey ? { ...S.layout, nKey } : S.layout;
+}
+
+// ---------- 記録をまとめる配列（v6.1.0 から） ----------
+// 記録そのものは書き換えず、「この配列の記録は、あの配列の記録として数える」という対応だけを持つ（いつでも解除できる）。
+
+/** {まとめる配列の名前: まとめ先の配列の名前} */
+export function layoutMerges() {
+  const map = readNameMap(K.layoutMerge);
+  // まとめ先がさらにまとめられている・自分自身を指すものは使わない（1 段だけにする）。
+  // 先に全部を調べてから消す（消しながら調べると、A→B・B→A のような壊れたデータで片方だけ残るため）
+  const bad = Object.entries(map).filter(([from, to]) => from === to || Object.prototype.hasOwnProperty.call(map, to)).map(([from]) => from);
+  for (const from of bad) delete map[from];
+  return map;
+}
+
+/** 記録を数えるときの配列の名前（まとめていれば、まとめ先の名前）。 */
+export function recordLayoutName(name, merges = layoutMerges()) {
+  const n = name || '';
+  return Object.prototype.hasOwnProperty.call(merges, n) ? merges[n] : n;
+}
+
+/** 配列の記録をまとめる（to が空なら解除）。まとめ先にしていた配列をまとめると、それを指していたものは新しいまとめ先へ移す。 */
+export function setLayoutMerge(from, to) {
+  if (!from) return;
+  const map = layoutMerges();
+  if (to && to !== from) {
+    for (const [k, v] of Object.entries(map)) if (v === from) map[k] = to;
+    map[from] = to;
+    delete map[to];
+  } else delete map[from];
+  writeNameMap(K.layoutMerge, map);
+  bus.emit('history');
+}
+
 // キーボード調整・追加のキーの保存データ。保存できない環境でも、この画面を開いている間は効くように、ここにも持つ
 const inputTables = { loaded: false, calibration: null, extra: null };
 

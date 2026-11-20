@@ -38,7 +38,13 @@ for (const c of score.composite) {
   const r = c.rhythm === null ? undefined : score.rhythm[c.rhythm].out.mul;
   check(J(core.computeCompositeScore(c.refKpm, c.accRatio, r)).score === c.out.score, 'computeCompositeScore');
 }
-for (const c of score.rhythm) check(eq(J(core.computeRhythm(JSON.stringify(c.intervals))), c.out), 'computeRhythm');
+// リズムは v6.1.0 でわざと変えた（core/tests/golden_2a.rs の説明）：止まりが旧版（v5）を超えないことと、形を確かめる
+for (const c of score.rhythm) {
+  const r = J(core.computeRhythm(JSON.stringify(c.intervals)));
+  const rate = r.samples ? r.stalls / r.samples : 0;
+  check(r.samples === c.out.samples && r.stalls <= c.out.stalls
+    && (c.out.smooth === null ? r.smooth === null : Math.abs(r.smooth - (1 - rate)) < 1e-9 && Math.abs(r.mul - Math.max(0.7, 1 - rate)) < 1e-9), 'computeRhythm');
+}
 for (const c of score.ranks) {
   const r = J(core.scoreRank(c.score));
   check(r.rank.rank === c.rank && (r.next ? r.next.rank : null) === c.next, 'scoreRank ' + c.score);
@@ -81,6 +87,12 @@ const outs = [...'KANZI'].map((ch, i) => J(session.input(ch, null, i * 200, fals
 check(outs[4].kind === 'correct' && outs[4].finished, 'TypingSession 打ち切り');
 const fin = J(session.finish(JSON.stringify({ elapsedMs: 1000, courseKey: 'c', courseName: 'n', layoutKey: 'qwerty', layoutName: 'QWERTY', id: 'r_t', timestamp: 1 })));
 check(fin.record && fin.record.completedChars === 5 && fin.rank.rank, 'TypingSession.finish');
+// 「ん」を 1 打で打つ英字（配列に nKey を足して渡す。v6.1.0）
+const nSession = new core.TypingSession(JSON.stringify({ words: [{ kanji: '漢字', kana: 'かんじ', romaji: '', isCustomRomaji: false }], lang: 'ja', style: 'nihon', kind: 'jis', layout: { ...J(qwerty), nKey: 'Q' } }));
+const nOuts = [...'KAQZI'].map((ch, i) => J(nSession.input(ch, null, i * 200, false)));
+check(nOuts[4].kind === 'correct' && nOuts[4].finished && J(nSession.state()).mistakes === 0, 'TypingSession nKey');
+const theoryN = J(core.theoreticalTelemetry(JSON.stringify({ ...J(qwerty), nKey: 'Q' }), 'jis', JSON.stringify([{ kanji: 'かんい', kana: 'かんい', romaji: '', isCustomRomaji: false }]), 'nihon', false));
+check(theoryN.totalHits === 4, 'theoreticalTelemetry nKey');   // KANNI（5 打）→ KAQI（4 打）
 
 // ---------- シャトルラン：正しく打ち続け、その後は打たずに時間切れまで ----------
 const game = new core.ShuttleGame(qwerty, 'jis', 'nihon', 0, 12345);
@@ -186,6 +198,12 @@ check(core.toFixed(0.25, 1) === (0.25).toFixed(1), 'toFixed');
   check(ts.nextChar() === 'K' && ts.inputWouldMatch('K') && ts.chooseInputChar('!', 'K') === 'K', '包み TypingSession');
   [...'KANZI'].forEach((ch, i) => ts.input(ch, null, i * 100));
   check(ts.state().finished && ts.finish({ elapsedMs: 1000, id: 'r', timestamp: 1 }).record.completedChars === 5, '包み TypingSession.finish');
+  // 一時停止から戻ったら、止めていた時間をリズムの間隔に入れない（v6.1.4）
+  const tp = new TS({ words: [word], lang: 'ja', style: 'nihon', kind: 'jis', layout: q });
+  tp.input('K', null, 0); tp.input('A', null, 100);
+  tp.resetRhythmAnchor();
+  tp.input('N', null, 60000); tp.input('Z', null, 60100);
+  check(JSON.stringify(tp.state().keyIntervals) === '[100,100]', '包み TypingSession.resetRhythmAnchor');
   ts.free();
   const sg = new SG(q, 'jis', 'nihon', 0, 7);
   const st = sg.state();

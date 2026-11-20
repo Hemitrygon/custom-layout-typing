@@ -13,25 +13,34 @@ fn score_matches_current_version() {
     let g = load("score");
     let mut d = Diffs::new();
 
+    // リズムは v6.1.0 でわざと変えた（得意な並びを速く打てたとき、ふつうの速さの打鍵まで止まりにしないため。
+    // 基準を「速い方の 1/4 を除いた中央値」と「前後 10 個の中央値」の大きい方にした。score.rs の compute_rhythm）。
+    // 基準はいつも旧版（v5）以上なので、止まりの数が旧版を超えないこと・間隔の数・割合と係数の式が同じことを確かめる。
+    // スコアの式の照らし合わせには、旧版（v5）のリズムをそのまま使う。
     let rhythms: Vec<score::Rhythm> = arr(&g["rhythm"])
         .iter()
         .map(|c| {
             let iv: Vec<f64> = arr(&c["intervals"]).iter().map(f).collect();
             let got = score::compute_rhythm(&iv);
             let o = &c["out"];
-            let smooth_ok = match (got.smooth, o["smooth"].as_f64()) {
-                (None, None) => true,
-                (Some(a), Some(b)) => close(a, b),
-                _ => false,
+            let v5_stalls = o["stalls"].as_u64().unwrap() as usize;
+            let consistent = match got.smooth {
+                None => o["smooth"].is_null() && close(got.mul, f(&o["mul"])),
+                Some(sm) => {
+                    let rate = got.stalls as f64 / got.samples as f64;
+                    !o["smooth"].is_null() && close(sm, 1.0 - rate) && close(got.mul, f64::max(0.7, 1.0 - rate))
+                }
             };
             d.check(
-                smooth_ok
-                    && got.stalls as u64 == o["stalls"].as_u64().unwrap()
-                    && got.samples as u64 == o["samples"].as_u64().unwrap()
-                    && close(got.mul, f(&o["mul"])),
+                consistent && got.stalls <= v5_stalls && got.samples as u64 == o["samples"].as_u64().unwrap(),
                 || format!("rhythm {iv:?}: {got:?} / 旧版（v5） {o}"),
             );
-            got
+            score::Rhythm {
+                smooth: o["smooth"].as_f64(),
+                stalls: v5_stalls,
+                samples: o["samples"].as_u64().unwrap() as usize,
+                mul: f(&o["mul"]),
+            }
         })
         .collect();
     let none = score::compute_rhythm(&[]);

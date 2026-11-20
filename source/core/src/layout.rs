@@ -300,6 +300,9 @@ pub struct Layout {
     pub description: Option<String>,
     /// code → キーの文字。
     pub keys: BTreeMap<String, KeyDef>,
+    /// 「ん」を 1 打で打つ英字（IME で Q →「ん」のようにしている人のため）。保存の形（`to_json`）には入れない：
+    /// 配列とは別に保存し、練習を始めるときに `nKey` として渡す。
+    pub n_key: Option<char>,
 }
 
 impl Layout {
@@ -446,6 +449,7 @@ pub fn create_layout_config(name: &str, description: &str, overrides: &[(&str, &
         name: name.to_string(),
         description: Some(description.to_string()),
         keys,
+        n_key: None,
     }
 }
 
@@ -715,6 +719,7 @@ pub fn ensure_layout_keys(v: &Value, kind: KeyboardType) -> Option<Layout> {
         name: cut,
         description,
         keys,
+        n_key: None,
     })
 }
 
@@ -1108,6 +1113,12 @@ pub fn theoretical_telemetry(layout: &Layout, words: &[Word], style: Style, engl
         t.prev = None;
         let romaji = if english {
             kana::normalize_english_text(&w.kanji).to_uppercase()
+        } else if let Some(key) = layout.n_key.filter(|k| find_char_path(&k.to_string(), &reach).is_some()) {
+            // （その英字がこの配列で打てないときは、練習と同じく使わない）
+            // 「ん」を 1 打で打つ：練習と同じ候補の先頭をつなぐ
+            let mut chunks = kana::word_chunks(w, style);
+            kana::apply_n_key(&mut chunks, key);
+            chunks.iter().filter_map(|c| c.options.first()).map(String::as_str).collect()
         } else {
             kana::effective_word_romaji(w, style)
         };

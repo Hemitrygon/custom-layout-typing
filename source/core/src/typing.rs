@@ -162,6 +162,9 @@ impl Session {
                 Lang::En => kana::english_chunks(&word.kanji, &self.typeable),
                 Lang::Ja => {
                     let mut c = kana::word_chunks(word, self.style);
+                    if let Some(key) = self.layout.n_key {
+                        kana::apply_n_key(&mut c, key);
+                    }
                     kana::drop_untypeable_options(&mut c, &self.typeable);
                     c
                 }
@@ -466,6 +469,33 @@ mod tests {
         assert!(s.finished);
         let mut s = session("かんじ");
         type_all(&mut s, "KANNZI");
+        assert!(s.finished && s.mistakes == 0);
+    }
+
+    #[test]
+    fn n_key_types_n_in_one_stroke() {
+        let mut layout = preset_layout("qwerty", KeyboardType::Jis).unwrap();
+        layout.n_key = Some('Q');
+        let w = Word {
+            kanji: "かんい".into(),
+            kana: "かんい".into(),
+            romaji: String::new(),
+            is_custom_romaji: false,
+        };
+        let mut s = Session::new(
+            vec![w.clone()],
+            vec![None],
+            Lang::Ja,
+            Style::Nihon,
+            layout.clone(),
+            KeyboardType::Jis,
+        );
+        assert_eq!(s.target_next_char().as_deref(), Some("K"));
+        type_all(&mut s, "KAQI");
+        assert!(s.finished && s.mistakes == 0);
+        // ふつうの打ち方も受ける
+        let mut s = Session::new(vec![w], vec![None], Lang::Ja, Style::Nihon, layout, KeyboardType::Jis);
+        type_all(&mut s, "KANNI");
         assert!(s.finished && s.mistakes == 0);
     }
 
